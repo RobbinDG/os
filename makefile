@@ -1,3 +1,6 @@
+BOOT_DIR=boot
+BUILD_DIR=build
+
 add-toolchain:
 	rustup component add rust-src --toolchain nightly
 
@@ -6,17 +9,17 @@ FORCE: ;
 build-kernel: FORCE add-toolchain
 	cargo +nightly build --release --target i386-target.json -Z build-std=core,alloc
 
-kernel_entry.o:
-	nasm kernel_entry.asm -f elf -o kernel_entry.o 
+$(BUILD_DIR)/%.o: $(BOOT_DIR)/%.asm
+	nasm $< -f elf -o $@ 
 
-kernel.bin: kernel_entry.o build-kernel
-	ld -m elf_i386 -o kernel.bin -Ttext 0x0 --oformat binary kernel_entry.o target/i386-target/release/deps/libos-*.a
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o build-kernel
+	ld -m elf_i386 -o $@ -Ttext 0x0 --oformat binary kernel_entry.o target/i386-target/release/deps/libos-*.a
 
-boot_sect.bin: boot_sect.asm
+$(BUILD_DIR)/boot_sect.bin: $(BOOT_DIR)/boot_sect.asm
 	nasm -f bin $< -o $@ 
 
-os-image.bin: boot_sect.bin kernel.bin
+$(BUILD_DIR)/os-image.bin: $(BUILD_DIR)/boot_sect.bin $(BUILD_DIR)/kernel.bin
 	cat $^ > $@
 
-run: os-image.bin 
+run: $(BUILD_DIR)/os-image.bin 
 	qemu-system-i386 -fda $<

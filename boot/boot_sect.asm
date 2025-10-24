@@ -13,12 +13,12 @@ KERNEL_OFFSET equ 0x1000
     call switch_to_pm
     jmp $ ; this will actually never be executed
 
-%include "16_bit/print_str.asm"
-%include "16_bit/print_hex.asm"
-%include "32_bit/gdt.asm"
-%include "32_bit/print_str.asm"
-%include "32_bit_switch.asm"
-%include "read_disk.asm"
+%include "boot/16_bit/print_str.asm"
+%include "boot/16_bit/print_hex.asm"
+%include "boot/32_bit/gdt.asm"
+%include "boot/32_bit/print_str.asm"
+%include "boot/32_bit_switch.asm"
+%include "boot/read_disk.asm"
 
 [bits 16]
 load_kernel:
