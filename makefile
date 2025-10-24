@@ -1,8 +1,10 @@
 add-toolchain:
 	rustup component add rust-src --toolchain nightly
 
-build-kernel: add-toolchain
-	cargo +nightly build --target i386-target.json -Z build-std=core,alloc
+FORCE: ;
+
+build-kernel: FORCE add-toolchain
+	cargo +nightly build --release --target i386-target.json -Z build-std=core,alloc
 
 kernel_entry.o:
 	nasm kernel_entry.asm -f elf -o kernel_entry.o 
