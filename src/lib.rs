@@ -1,14 +1,14 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+#![no_std]  // don’t use the Rust standard library
+#![no_main] // you’ll provide your own entry point (optional)
+
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+#[unsafe(no_mangle)]  // turns off name mangling so we can easily link to it later.
+pub extern "C" fn kernel_main() -> u16 {
+    // your kernel entry point
+    // loop {}
+    0xbeef    
 }

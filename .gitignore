@@ -1,1 +1,5 @@
 /target
+*.bin
+*.o
+.vscode/
+.lock
