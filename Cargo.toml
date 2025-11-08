@@ -5,5 +5,13 @@ edition = "2024"
 
 [lib]
 crate-type = ["staticlib"]
+test = false
+bench = false
 
 [dependencies]
+
+[profile.release]
+opt-level = "z"
+debug = true 
+lto = "fat"
+panic = "abort"

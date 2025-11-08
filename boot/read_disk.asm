@@ -50,3 +50,8 @@ TOO_FEW_SECTORS_MSG:
 
 DISK_ERROR_STATUS_MSG:
     db 'Disk Error. Status: ', 0
+
+BEFORE:
+    db 'B', 0
+AFTER:
+    db 'A', 0
