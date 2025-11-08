@@ -1,6 +1,5 @@
 [unstable]
 build-std = ["core", "alloc"]
-build-std-features = ["compiler-builtins-mem"]
 
 [build]
 target = "i386-target.json"

@@ -15,11 +15,11 @@ build-kernel: FORCE add-toolchain
 $(BUILD_DIR)/%.o: $(BOOT_DIR)/%.asm
 	nasm $< -g -f elf -o $@ 
 
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o build-kernel #$(BUILD_DIR)/interrupt.o
-	ld -no-pie -nostdlib -m elf_i386 -o $@ -T linker.ld --oformat binary $(BUILD_DIR)/kernel_entry.o target/i386-target/release/deps/libos-*.a 
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o build-kernel $(BUILD_DIR)/interrupt.o
+	ld -no-pie -nostdlib -m elf_i386 -o $@ -T linker.ld --oformat binary $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/interrupt.o target/i386-target/release/deps/libos-*.a 
 
-$(BUILD_DIR)/kernel.elf: $(BUILD_DIR)/kernel_entry.o build-kernel #$(BUILD_DIR)/interrupt.o
-	ld -no-pie -nostdlib -m elf_i386 -o $@ -T linker.ld $(BUILD_DIR)/kernel_entry.o target/i386-target/release/deps/libos-*.a 
+$(BUILD_DIR)/kernel.elf: $(BUILD_DIR)/kernel_entry.o build-kernel $(BUILD_DIR)/interrupt.o
+	ld -no-pie -nostdlib -m elf_i386 -o $@ -T linker.ld $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/interrupt.o target/i386-target/release/deps/libos-*.a 
 
 $(BUILD_DIR)/boot_sect.bin: $(BOOT_DIR)/boot_sect.asm
 	nasm -f bin $< -o $@ 
@@ -32,7 +32,7 @@ debug: $(BUILD_DIR)/os-image.bin $(BUILD_DIR)/kernel.elf
 	${GDB} -ex "target remote localhost:1234" -ex "file $(BUILD_DIR)/kernel.elf"
 
 run: $(BUILD_DIR)/os-image.bin 
-	qemu-system-i386 -fda $< -d guest_errors -boot order=ac
+	qemu-system-i386 -no-reboot -fda $< -boot order=ac
 
 
 ### OBJDUMPs
