@@ -1,9 +1,14 @@
 use core::arch::asm;
 
-use crate::{idt::{IDTGate, IDTReg}, printer::TTY};
+use crate::{
+    idt::{IDTGate, IDTReg},
+    interrupt_handlers::INTERRUPT_HANDLERS,
+    pic::PIC,
+    printer::TTY,
+};
 
 const NUM_IDT_GATES: usize = 256;
-type IDTGates = [IDTGate; 256];
+type IDTGates = [IDTGate; NUM_IDT_GATES];
 
 static mut IDT_REG: IDTReg = IDTReg::null();
 static mut IDT: IDTGates = {
@@ -80,6 +85,26 @@ pub unsafe fn set_isr() {
         IDT[29].set(isr29);
         IDT[30].set(isr30);
         IDT[31].set(isr31);
+
+        PIC::remap(32, 40);
+
+        IDT[32].set(irq0);
+        IDT[33].set(irq1);
+        IDT[34].set(irq2);
+        IDT[35].set(irq3);
+        IDT[36].set(irq4);
+        IDT[37].set(irq5);
+        IDT[38].set(irq6);
+        IDT[39].set(irq7);
+        IDT[40].set(irq8);
+        IDT[41].set(irq9);
+        IDT[42].set(irq10);
+        IDT[43].set(irq11);
+        IDT[44].set(irq12);
+        IDT[45].set(irq13);
+        IDT[46].set(irq14);
+        IDT[47].set(irq15);
+
         IDT_REG.base = &IDT[0];
         IDT_REG.limit = (core::mem::size_of::<IDTGates>() - 1) as u16;
         let idt_reg_ptr: *const u16 = &raw const IDT_REG.limit;
@@ -92,7 +117,7 @@ pub unsafe fn set_isr() {
 }
 
 #[repr(C, packed)]
-struct Registers {
+pub struct Registers {
     ds: u32,
     edi: u32,
     esi: u32,
@@ -112,11 +137,22 @@ struct Registers {
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn isr_handler(regs: Registers) {
-    let mut tty = TTY::new();
+unsafe extern "C" fn isr_handler(regs: Registers) {
     unsafe {
-        tty.println_ascii(ISR_EXCEPTION_MSGS[regs.int_no as usize].as_bytes());
-        tty.print_hex(regs.int_no as u16);
+        if let Some(mut tty) = TTY::get_instance() {
+            tty.println_ascii(ISR_EXCEPTION_MSGS[regs.int_no as usize].as_bytes());
+            tty.print_hex(regs.int_no as u16);
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn irq_handler(regs: Registers) {
+    unsafe {
+        PIC::send_eoi(regs.int_no as u8);
+    }
+    if regs.int_no > 0 {
+        INTERRUPT_HANDLERS[regs.int_no as usize](regs);
     }
 }
 
@@ -183,4 +219,20 @@ unsafe extern "C" {
     fn isr30();
 
     fn isr31();
+    fn irq0();
+    fn irq1();
+    fn irq2();
+    fn irq3();
+    fn irq4();
+    fn irq5();
+    fn irq6();
+    fn irq7();
+    fn irq8();
+    fn irq9();
+    fn irq10();
+    fn irq11();
+    fn irq12();
+    fn irq13();
+    fn irq14();
+    fn irq15();
 }

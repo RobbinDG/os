@@ -1,16 +1,18 @@
-#![no_std]  // don’t use the Rust standard library
+#![no_std] // don’t use the Rust standard library
 #![no_main] // you’ll provide your own entry point (optional)
 
-mod printer;
-mod ports;
-mod vga;
-mod util;
-mod isr;
 mod idt;
+mod interrupt_handlers;
+mod isr;
+mod pic;
+mod ports;
+mod printer;
+mod util;
+mod vga;
 
 use core::arch::asm;
 
-use crate::{ isr::set_isr, printer::TTY};
+use crate::{isr::set_isr, printer::TTY};
 /*
 use core::ptr;
 
@@ -58,8 +60,14 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-#[unsafe(no_mangle)]  // turns off name mangling so we can easily link to it later.
+#[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
+    unsafe {
+        if let Some(mut tty) = TTY::get_instance() {
+            tty.clear();
+            tty.println_ascii("This is kernel_main.rs".as_bytes());
+        }
+    }
     unsafe {
         set_isr();
         asm!("int 2");

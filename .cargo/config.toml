@@ -2,4 +2,4 @@
 build-std = ["core", "alloc"]
 
 [build]
-target = "i386-target.json"
+target = 'i386-target.json'
