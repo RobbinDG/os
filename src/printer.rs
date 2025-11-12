@@ -83,7 +83,7 @@ impl TTY {
         }
     }
 
-    pub unsafe fn println_ascii(&mut self, s: &[u8]) {
+    pub unsafe fn print_ascii(&mut self, s: &[u8]) {
         for c in s {
             unsafe {
                 let char_addr: *mut u8 = VIDEO_MEM.add(2 * (self.y * WIDTH + self.x) as usize);
@@ -93,10 +93,23 @@ impl TTY {
             }
             self.x = (self.x + 1) % WIDTH;
         }
+        unsafe {
+            self.update_cursor_position();
+        }
+    }
+
+    pub unsafe fn nl(&mut self) {
         self.y = (self.y + 1) % HEIGHT;
         self.x = 0;
         unsafe {
             self.update_cursor_position();
+        }
+    }
+
+    pub unsafe fn println_ascii(&mut self, s: &[u8]) {
+        unsafe {
+            self.print_ascii(s);
+            self.nl();
         }
     }
 

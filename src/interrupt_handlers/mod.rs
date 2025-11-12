@@ -1,8 +1,10 @@
 mod null_handler;
+mod keyboard;
 
-use crate::isr::Registers;
+use crate::{isr::Registers, sys_event::SysEvent};
 
-pub const INTERRUPT_HANDLERS: [fn(Registers); 256] = [
+pub static mut INTERRUPT_HANDLERS: [unsafe fn(Registers) -> Option<SysEvent>; 256] = [
+    // 0
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
@@ -19,6 +21,7 @@ pub const INTERRUPT_HANDLERS: [fn(Registers); 256] = [
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
+    // 16
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
@@ -35,7 +38,9 @@ pub const INTERRUPT_HANDLERS: [fn(Registers); 256] = [
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
+    // 32
     null_handler::null_handler,
+    keyboard::keyboard_handler,
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
@@ -50,6 +55,7 @@ pub const INTERRUPT_HANDLERS: [fn(Registers); 256] = [
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
+    // 48
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
@@ -66,7 +72,7 @@ pub const INTERRUPT_HANDLERS: [fn(Registers); 256] = [
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
-    null_handler::null_handler,
+    // 64
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,

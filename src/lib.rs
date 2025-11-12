@@ -4,15 +4,23 @@
 mod idt;
 mod interrupt_handlers;
 mod isr;
+mod keyboard_driver;
 mod pic;
 mod ports;
 mod printer;
+mod ps2;
+mod sys_event;
 mod util;
 mod vga;
 
 use core::arch::asm;
 
-use crate::{isr::set_isr, printer::TTY};
+use crate::{
+    isr::{empty_event_buffer, set_isr},
+    keyboard_driver::KeyboardDriver,
+    printer::TTY,
+    ps2::{identity_devices, tmp},
+};
 /*
 use core::ptr;
 
@@ -66,11 +74,31 @@ pub extern "C" fn kernel_main() -> ! {
         if let Some(mut tty) = TTY::get_instance() {
             tty.clear();
             tty.println_ascii("This is kernel_main.rs".as_bytes());
+            set_isr();
+            asm!("sti"); // Sets the enable interrupt flag.
+            tmp();
+        }
+        let mut keyboard_drv = match KeyboardDriver::initialise() {
+            Ok(drv) => drv,
+            Err(_) => {
+                if let Some(mut tty) = TTY::get_instance() {
+                    tty.println_ascii("Couldn't load keyboard driver.".as_bytes());
+                }
+                loop {}
+            }
+        };
+        loop {
+            asm!("hlt");
+            let event_buf = empty_event_buffer();
+            for i in 0..event_buf.len() {
+                if let Some(Some(event)) = event_buf.get(i) {
+                    match event {
+                        sys_event::SysEvent::Keyboard => keyboard_drv.keyboard_interrupt_handler(),
+                    }
+                } else {
+                    break;
+                }
+            }
         }
     }
-    unsafe {
-        set_isr();
-        asm!("int 2");
-    }
-    loop {}
 }

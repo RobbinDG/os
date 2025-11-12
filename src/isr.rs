@@ -5,6 +5,7 @@ use crate::{
     interrupt_handlers::INTERRUPT_HANDLERS,
     pic::PIC,
     printer::TTY,
+    sys_event::SysEvent,
 };
 
 const NUM_IDT_GATES: usize = 256;
@@ -14,6 +15,18 @@ static mut IDT_REG: IDTReg = IDTReg::null();
 static mut IDT: IDTGates = {
     let emtpy_gate = IDTGate::new();
     [emtpy_gate; NUM_IDT_GATES]
+};
+static mut LAST_INTERRUPT: u32 = 0;
+
+const EVENT_BUF_SIZE: usize = 8;
+struct EventBuf {
+    buf: [Option<SysEvent>; EVENT_BUF_SIZE],
+    len: usize,
+}
+
+static mut EVENT_BUF: EventBuf = EventBuf {
+    buf: [None; EVENT_BUF_SIZE],
+    len: 0,
 };
 
 const ISR_EXCEPTION_MSGS: [&str; 32] = [
@@ -118,28 +131,29 @@ pub unsafe fn set_isr() {
 
 #[repr(C, packed)]
 pub struct Registers {
-    ds: u32,
-    edi: u32,
-    esi: u32,
-    ebp: u32,
-    esp: u32,
-    ebx: u32,
-    edx: u32,
-    ecx: u32,
-    eax: u32,
-    int_no: u32,
-    err_code: u32,
-    eip: u32,
-    cs: u32,
-    eflags: u32,
-    useresp: u32,
-    ss: u32,
+    pub ds: u32,
+    pub edi: u32,
+    pub esi: u32,
+    pub ebp: u32,
+    pub esp: u32,
+    pub ebx: u32,
+    pub edx: u32,
+    pub ecx: u32,
+    pub eax: u32,
+    pub int_no: u32,
+    pub err_code: u32,
+    pub eip: u32,
+    pub cs: u32,
+    pub eflags: u32,
+    pub useresp: u32,
+    pub ss: u32,
 }
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn isr_handler(regs: Registers) {
     unsafe {
         if let Some(mut tty) = TTY::get_instance() {
+            LAST_INTERRUPT = regs.int_no;
             tty.println_ascii(ISR_EXCEPTION_MSGS[regs.int_no as usize].as_bytes());
             tty.print_hex(regs.int_no as u16);
         }
@@ -150,9 +164,39 @@ unsafe extern "C" fn isr_handler(regs: Registers) {
 unsafe extern "C" fn irq_handler(regs: Registers) {
     unsafe {
         PIC::send_eoi(regs.int_no as u8);
+        if regs.int_no > 0 {
+            LAST_INTERRUPT = regs.int_no;
+            if let Some(event) = INTERRUPT_HANDLERS[regs.int_no as usize](regs) {
+                // TODO BHV this leads to missed events if the buffer fills up, and gives no warnings.
+                EVENT_BUF.buf[EVENT_BUF.len % EVENT_BUF_SIZE] = Some(event);
+                EVENT_BUF.len += 1;
+            }
+        }
     }
-    if regs.int_no > 0 {
-        INTERRUPT_HANDLERS[regs.int_no as usize](regs);
+}
+
+pub unsafe fn empty_event_buffer() -> [Option<SysEvent>; EVENT_BUF_SIZE] {
+    unsafe {
+        let cp = EVENT_BUF.buf;
+        while EVENT_BUF.len > 0 {
+            EVENT_BUF.len -= 1;
+            EVENT_BUF.buf[EVENT_BUF.len] = None;
+        }
+        cp
+    }
+}
+
+pub unsafe fn clear_last_interrupt() {
+    unsafe {
+        LAST_INTERRUPT = 0;
+    }
+}
+
+pub unsafe fn last_interrupt() -> u32 {
+    unsafe {
+        let li = LAST_INTERRUPT;
+        LAST_INTERRUPT = 0;
+        li
     }
 }
 

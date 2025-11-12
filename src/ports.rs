@@ -1,5 +1,7 @@
 use core::arch::asm;
 
+use crate::isr::{clear_last_interrupt, last_interrupt};
+
 pub enum Port {
     MBHexDisplay = 0x0080, // Unused after POST, used for IO waiting.
 
@@ -8,11 +10,15 @@ pub enum Port {
     MasterPICData = 0x0021,
     SlavePICCommand = 0x00A0,
     SlavePICData = 0x00A1,
+
+    // PS2
+    PS2DataPort = 0x0060,
+    PS2StatusCmdReg = 0x0064,
 }
 
 impl Into<u16> for Port {
     fn into(self) -> u16 {
-        self as u16 
+        self as u16
     }
 }
 
@@ -61,7 +67,17 @@ pub unsafe fn read_port_word(port: u16) -> u16 {
 }
 
 pub unsafe fn io_wait() {
+    unsafe { write_port_byte(Port::MBHexDisplay as u16, 0) }
+}
+
+pub unsafe fn kernel_write_port_byte(port: u16, data: u8) -> Result<(), u32> {
     unsafe {
-        write_port_byte(Port::MBHexDisplay.into(), 0);
+        clear_last_interrupt();
+        write_port_byte(port, data);
+        let int = last_interrupt();
+        if int > 0 {
+            return Err(int);
+        }
+        Ok(())
     }
 }

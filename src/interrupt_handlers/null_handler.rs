@@ -1,5 +1,3 @@
-use crate::isr::Registers;
+use crate::{isr::Registers, sys_event::SysEvent};
 
-pub fn null_handler(_regs: Registers) {
-
-}
+pub unsafe fn null_handler(_regs: Registers) -> Option<SysEvent> { None }
