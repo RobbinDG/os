@@ -27,7 +27,7 @@ load_kernel:
     call print_nl
 
     mov bx, KERNEL_OFFSET ; Read from disk and store in 0x1000
-    mov al, 10  ; Load 8 code sectors and 1 rodata sector
+    mov al, 31  ; Load 8 code sectors and 1 rodata sector
     mov cl, 2 ; First available sector after boot sector
     mov dl, [BOOT_DRIVE]
     call read_disk 

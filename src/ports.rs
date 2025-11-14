@@ -22,52 +22,56 @@ impl Into<u16> for Port {
     }
 }
 
-pub unsafe fn write_port_byte(port: u16, data: u8) {
+pub fn write_port_byte(port: u16, data: u8) {
     unsafe {
         asm!(
             "out dx, al",
             in("dx") port,
             in("al") data,
+            options(nomem, nostack, preserves_flags),
         )
     }
 }
 
-pub unsafe fn read_port_byte(port: u16) -> u8 {
+pub fn read_port_byte(port: u16) -> u8 {
     unsafe {
         let mut al: u8;
         asm!(
             "in al, dx",
             in("dx") port,
             out("al") al,
+            options(nomem, nostack, preserves_flags),
         );
         al
     }
 }
 
-pub unsafe fn write_port_word(port: u16, data: u16) {
+pub fn write_port_word(port: u16, data: u16) {
     unsafe {
         asm!(
             "out dx, ax",
             in("dx") port,
             in("ax") data,
+            options(nomem, nostack, preserves_flags),
         )
     }
 }
 
-pub unsafe fn read_port_word(port: u16) -> u16 {
+pub fn read_port_word(port: u16) -> u16 {
     unsafe {
         let mut ax: u16;
         asm!(
             "in ax, dx",
             in("dx") port,
             out("ax") ax,
+            options(nomem, nostack, preserves_flags),
         );
         ax
     }
 }
 
-pub unsafe fn io_wait() {
-    unsafe { write_port_byte(Port::MBHexDisplay as u16, 0) }
+pub fn io_wait() {
+    write_port_byte(Port::MBHexDisplay as u16, 0)
 }
 
 pub unsafe fn kernel_write_port_byte(port: u16, data: u8) -> Result<(), u32> {

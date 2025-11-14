@@ -1,4 +1,7 @@
-use crate::{ports, vga};
+use crate::{
+    ports::{read_port_byte, write_port_byte},
+    vga::{Port, VGA},
+};
 
 const VIDEO_MEM: *mut u8 = 0xb8000 as *mut u8;
 const WIDTH: u16 = 80;
@@ -14,12 +17,12 @@ static mut ACTIVE: bool = false;
 /// it copies this state, storing it back when dropped. This circumvents
 /// problems with mutably borrowing static mutables and follows borrowing
 /// rules.
-pub struct TTY {
+pub struct VGAText {
     x: u16,
     y: u16,
 }
 
-impl TTY {
+impl VGAText {
     /// Obtains an instance of the TTY, if one has not been used yet.
     /// The returned Option acts as a non-blocking lock, returning `None`
     /// when an instance is already in use.
@@ -35,7 +38,7 @@ impl TTY {
     }
 }
 
-impl Drop for TTY {
+impl Drop for VGAText {
     fn drop(&mut self) {
         unsafe {
             X = self.x;
@@ -45,7 +48,7 @@ impl Drop for TTY {
     }
 }
 
-impl TTY {
+impl VGAText {
     pub unsafe fn clear(&mut self) {
         let screen_size = WIDTH * HEIGHT;
         for i in 0..screen_size {
@@ -56,54 +59,58 @@ impl TTY {
         }
         self.x = 0;
         self.y = 0;
-        unsafe {
-            self.update_cursor_position();
-        }
+        self.update_cursor_position();
     }
 
-    pub unsafe fn get_cursor_position(&self) -> usize {
-        unsafe {
-            ports::write_port_byte(vga::Port::VGA3Out as u16, vga::VGA::CursorHiByte as u8);
-            let mut offset = (ports::read_port_byte(vga::Port::VGA3In as u16) as usize) << 8;
-            ports::write_port_byte(vga::Port::VGA3Out as u16, vga::VGA::CursorLoByte as u8);
-            offset += ports::read_port_byte(vga::Port::VGA3In as u16) as usize;
-            offset * 2
-        }
+    pub fn get_cursor_position(&self) -> usize {
+        write_port_byte(Port::VGA3Out as u16, VGA::CursorHiByte as u8);
+        let mut offset = (read_port_byte(Port::VGA3In as u16) as usize) << 8;
+        write_port_byte(Port::VGA3Out as u16, VGA::CursorLoByte as u8);
+        offset += read_port_byte(Port::VGA3In as u16) as usize;
+        offset * 2
     }
 
-    pub unsafe fn update_cursor_position(&mut self) {
+    pub fn update_cursor_position(&mut self) {
         let offset = 2 * (self.y * WIDTH + self.x);
         let hi = offset >> 8;
         let lo = offset & 0x00ff;
+        write_port_byte(Port::VGA3Out as u16, VGA::CursorHiByte as u8);
+        write_port_byte(Port::VGA3In as u16, hi as u8);
+        write_port_byte(Port::VGA3Out as u16, VGA::CursorLoByte as u8);
+        write_port_byte(Port::VGA3In as u16, lo as u8);
+    }
+
+    pub unsafe fn put_char(&mut self, c: u8) {
         unsafe {
-            ports::write_port_byte(vga::Port::VGA3Out as u16, vga::VGA::CursorHiByte as u8);
-            ports::write_port_byte(vga::Port::VGA3In as u16, hi as u8);
-            ports::write_port_byte(vga::Port::VGA3Out as u16, vga::VGA::CursorLoByte as u8);
-            ports::write_port_byte(vga::Port::VGA3In as u16, lo as u8);
+            Self::put_char_raw(c, self.x, self.y);
         }
+        self.move_cursor(1, 0);
+    }
+
+    pub unsafe fn bs(&mut self) {
+        unsafe {
+            Self::put_char_raw(' ' as u8, self.x, self.y);
+        }
+        self.move_cursor(1, 0);
     }
 
     pub unsafe fn print_ascii(&mut self, s: &[u8]) {
         for c in s {
             unsafe {
-                let char_addr: *mut u8 = VIDEO_MEM.add(2 * (self.y * WIDTH + self.x) as usize);
-                let col_addr = char_addr.add(1);
-                char_addr.write_unaligned(*c);
-                col_addr.write_unaligned(0x0f);
+                if *c == 0x00 {
+                    break;
+                }
+                Self::put_char_raw(*c, self.x, self.y);
+                self.move_cursor(1, 0);
             }
-            self.x = (self.x + 1) % WIDTH;
         }
-        unsafe {
-            self.update_cursor_position();
-        }
+        self.update_cursor_position();
     }
 
-    pub unsafe fn nl(&mut self) {
-        self.y = (self.y + 1) % HEIGHT;
+    pub fn nl(&mut self) {
+        self.move_cursor(0, 1);
         self.x = 0;
-        unsafe {
-            self.update_cursor_position();
-        }
+        self.update_cursor_position();
     }
 
     pub unsafe fn println_ascii(&mut self, s: &[u8]) {
@@ -124,8 +131,24 @@ impl TTY {
         }
     }
 
+    unsafe fn put_char_raw(c: u8, x: u16, y: u16) {
+        unsafe {
+            let char_addr: *mut u8 = VIDEO_MEM.add(2 * (y * WIDTH + x) as usize);
+            let col_addr = char_addr.add(1);
+            char_addr.write_unaligned(c);
+            col_addr.write_unaligned(0x0f);
+        }
+    }
+
+    #[inline]
+    fn move_cursor(&mut self, dx: i16, dy: i16) {
+        let x_acc = self.x.wrapping_add_signed(dx);
+        self.x = x_acc % WIDTH;
+        self.y = (self.y.wrapping_add_signed(dy) + x_acc / WIDTH) % HEIGHT;
+    }
+
     /**
-     * Convers the lowest half-byte to a hex ASCII character.
+     * Converts the lowest half-byte to a hex ASCII character.
      */
     fn half_byte_to_hex_ascii(n: u16) -> u8 {
         if n <= 9 {

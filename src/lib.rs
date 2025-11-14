@@ -9,8 +9,10 @@ mod pic;
 mod ports;
 mod printer;
 mod ps2;
+mod shell;
 mod sys_event;
 mod util;
+mod static_str;
 mod vga;
 
 use core::arch::asm;
@@ -18,8 +20,9 @@ use core::arch::asm;
 use crate::{
     isr::{empty_event_buffer, set_isr},
     keyboard_driver::KeyboardDriver,
-    printer::TTY,
-    ps2::{identity_devices, tmp},
+    printer::VGAText,
+    ps2::tmp,
+    shell::Shell,
 };
 /*
 use core::ptr;
@@ -71,7 +74,7 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
     unsafe {
-        if let Some(mut tty) = TTY::get_instance() {
+        if let Some(mut tty) = VGAText::get_instance() {
             tty.clear();
             tty.println_ascii("This is kernel_main.rs".as_bytes());
             set_isr();
@@ -81,24 +84,33 @@ pub extern "C" fn kernel_main() -> ! {
         let mut keyboard_drv = match KeyboardDriver::initialise() {
             Ok(drv) => drv,
             Err(_) => {
-                if let Some(mut tty) = TTY::get_instance() {
+                if let Some(mut tty) = VGAText::get_instance() {
                     tty.println_ascii("Couldn't load keyboard driver.".as_bytes());
                 }
                 loop {}
             }
         };
-        loop {
-            asm!("hlt");
-            let event_buf = empty_event_buffer();
-            for i in 0..event_buf.len() {
-                if let Some(Some(event)) = event_buf.get(i) {
-                    match event {
-                        sys_event::SysEvent::Keyboard => keyboard_drv.keyboard_interrupt_handler(),
+        if let Some(tty) = VGAText::get_instance() {
+            let mut shell = Shell::new(tty);
+            loop {
+                asm!("hlt");
+                let event_buf = empty_event_buffer();
+                for i in 0..event_buf.len() {
+                    if let Some(Some(event)) = event_buf.get(i) {
+                        match event {
+                            sys_event::SysEvent::Keyboard => {
+                                if let Some(key) = keyboard_drv.keyboard_interrupt_handler() {
+                                    shell.handle_key(key);
+                                }
+                            }
+                        }
+                    } else {
+                        break;
                     }
-                } else {
-                    break;
                 }
             }
+        } else {
+            loop {}
         }
     }
 }
