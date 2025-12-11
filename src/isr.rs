@@ -155,7 +155,7 @@ unsafe extern "C" fn isr_handler(regs: Registers) {
         if let Some(mut tty) = VGAText::get_instance() {
             LAST_INTERRUPT = regs.int_no;
             tty.println_ascii(ISR_EXCEPTION_MSGS[regs.int_no as usize].as_bytes());
-            tty.print_hex(regs.int_no as u16);
+            tty.print_hex(regs.int_no);
         }
     }
 }

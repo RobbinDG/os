@@ -14,6 +14,8 @@ mod sys_event;
 mod util;
 mod static_str;
 mod vga;
+mod mem;
+mod hex_printable;
 
 use core::arch::asm;
 

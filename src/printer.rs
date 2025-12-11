@@ -1,4 +1,5 @@
 use crate::{
+    hex_printable::HexPrintable,
     ports::{read_port_byte, write_port_byte},
     vga::{Port, VGA},
 };
@@ -120,15 +121,28 @@ impl VGAText {
         }
     }
 
-    pub unsafe fn print_hex(&mut self, n: u16) {
-        let mut buf = [0; 4];
-        buf[3] = Self::half_byte_to_hex_ascii(n & 0x000F);
-        buf[2] = Self::half_byte_to_hex_ascii((n & 0x00F0) >> 4);
-        buf[1] = Self::half_byte_to_hex_ascii((n & 0x0F00) >> 8);
-        buf[0] = Self::half_byte_to_hex_ascii((n & 0xF000) >> 12);
+    pub unsafe fn print_hex<T: HexPrintable>(&mut self, n: T) {
         unsafe {
-            self.println_ascii(&buf);
+            match n.as_hex() {
+                Ok(hex) => {
+                    for i in 0..hex.len() {
+                        match hex.get(i) {
+                            Ok(c) => self.put_char(*c),
+                            Err(_) => return,
+                        }
+                    }
+                },
+                Err(_) => return,
+            }
         }
+        //let mut buf = [0; 4];
+        //buf[3] = Self::half_byte_to_hex_ascii(n & 0x000F);
+        //buf[2] = Self::half_byte_to_hex_ascii((n & 0x00F0) >> 4);
+        //buf[1] = Self::half_byte_to_hex_ascii((n & 0x0F00) >> 8);
+        //buf[0] = Self::half_byte_to_hex_ascii((n & 0xF000) >> 12);
+        //unsafe {
+        //    self.println_ascii(&buf);
+        //}
     }
 
     unsafe fn put_char_raw(c: u8, x: u16, y: u16) {

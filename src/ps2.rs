@@ -115,10 +115,10 @@ pub unsafe fn identity_devices() -> Result<(u8, u8), KeyboardInitError> {
             // Wait for reply and/or timeout
             let b1 = read_port_byte(Port::PS2DataPort as u16);
             tty.print_ascii("B1: ".as_bytes());
-            tty.print_hex(b1 as u16);
+            tty.print_hex(b1);
             let b2 = read_port_byte(Port::PS2DataPort as u16);
             tty.print_ascii("B2 ".as_bytes());
-            tty.print_hex(b2 as u16);
+            tty.print_hex(b2);
             // Send enable scanning command (0xF4)
             write_port_byte(
                 Port::PS2DataPort as u16,
