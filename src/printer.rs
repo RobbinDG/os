@@ -131,7 +131,7 @@ impl VGAText {
                             Err(_) => return,
                         }
                     }
-                },
+                }
                 Err(_) => return,
             }
         }

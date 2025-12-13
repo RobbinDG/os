@@ -5,9 +5,9 @@ pub trait HexPrintable {
 
     fn half_byte_to_hex_ascii(n: u8) -> u8 {
         if n <= 9 {
-            '0' as u8 + n
+            b'0' + n
         } else {
-            'A' as u8 + (n - 10)
+            b'A' + (n - 10)
         }
     }
 
