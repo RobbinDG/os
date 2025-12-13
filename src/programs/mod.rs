@@ -1,1 +1,1 @@
-mod ps2_cli;
+pub mod ps2_cli;
