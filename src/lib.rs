@@ -1,31 +1,37 @@
 #![no_std] // don’t use the Rust standard library
-#![no_main] // you’ll provide your own entry point (optional)
+#![no_main]
+#![deny(clippy::unwrap_used, clippy::expect_used)]
 
+mod dyn_array;
+mod hex_printable;
 mod idt;
 mod interrupt_handlers;
 mod isr;
+mod kernel;
 mod keyboard_driver;
 mod pic;
 mod ports;
 mod printer;
+mod programs;
 mod ps2;
 mod shell;
+mod static_str;
 mod sys_event;
 mod util;
-mod static_str;
 mod vga;
-mod mem;
-mod hex_printable;
 
 use core::arch::asm;
 
 use crate::{
     isr::{empty_event_buffer, set_isr},
+    kernel::kernel::KernelAcc,
     keyboard_driver::KeyboardDriver,
     printer::VGAText,
     ps2::tmp,
     shell::Shell,
 };
+
+static KERNEL: KernelAcc = KernelAcc::new();
 /*
 use core::ptr;
 
@@ -75,6 +81,7 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
+    KERNEL.init();
     unsafe {
         if let Some(mut tty) = VGAText::get_instance() {
             tty.clear();

@@ -9,9 +9,11 @@ test = false
 bench = false
 
 [dependencies]
+spin = { version = "0.10.0" }
+once_cell_no_std = { version = "0.1.1" }
 
 [profile.release]
 opt-level = "z"
-debug = true 
+debug = true
 lto = "fat"
 panic = "abort"
