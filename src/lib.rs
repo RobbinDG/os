@@ -78,10 +78,27 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
+/// Detects the low memory size and stores it in this object.
+/// This implementation is *incredibly* hacky and does not account for errors.
+/// Reason 1: The address is hard coded in boot_sect.asm so we know where to read the value
+/// Reason 2: The BIOS call can only be made from real mode, so we get it 
+///     in the boot sector and put it away for a bit.
+/// Reason 3: The address of the stored value is in the boot sector, so we are essentially
+///     overwriting it if ever it would get filled up.
+/// Reason 4: The interrupt 0x12 comes with an error bit on the carry flag. We don't store 
+///     it right now.
+/// Reason 5: This doesn't really fix anything, if we want to expand, we need to do all this
+///     trickery again.
+/// 
+/// The solution is veritual 16 bit mode. That way, we can read it during execution.
+unsafe fn detect_low_mem() -> u16 {
+    let addr = 508 as *const u16;
+    unsafe { *addr }
+}
 
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
-    KERNEL.init();
+    KERNEL.init(unsafe { detect_low_mem() } );
     unsafe {
         if let Some(mut tty) = VGAText::get_instance() {
             tty.clear();

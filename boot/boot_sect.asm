@@ -9,6 +9,10 @@ KERNEL_OFFSET equ 0x1000
     call print_str ; This will be written after the BIOS messages
     call print_nl
 
+    clc
+    int 0x12
+    mov [508], ax
+
     call load_kernel
     call switch_to_pm
     jmp $ ; this will actually never be executed

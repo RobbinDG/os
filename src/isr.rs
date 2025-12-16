@@ -161,11 +161,14 @@ unsafe extern "C" fn isr_handler(regs: Registers) {
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn irq_handler(regs: Registers) {
+unsafe extern "C" fn irq_handler(mut regs: Registers) {
     unsafe {
         PIC::send_eoi(regs.int_no as u8);
         if regs.int_no > 0 {
             LAST_INTERRUPT = regs.int_no;
+            if regs.int_no == 0x12 {
+                regs.int_no += 1;
+            }
             if let Some(event) = INTERRUPT_HANDLERS[regs.int_no as usize](regs) {
                 // TODO BHV this leads to missed events if the buffer fills up, and gives no warnings.
                 EVENT_BUF.buf[EVENT_BUF.len % EVENT_BUF_SIZE] = Some(event);

@@ -21,8 +21,10 @@ impl KernelAcc {
 
     /// Initialise the kernel. If, somehow, this fails, we loop forever so
     /// it can be easily debugged by GDB.
-    pub fn init(&self) {
-        if let Err(_) = self.inner.set(Kernel::new()) {
+    pub fn init(&self, low_mem: u16) {
+        let kernel = Kernel::new();
+        kernel.memory_manager().lock().set_low_mem(low_mem);
+        if let Err(_) = self.inner.set(kernel) {
             loop {}
         }
     }

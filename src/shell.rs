@@ -1,15 +1,16 @@
-use crate::{printer::VGAText, programs::ps2_cli::ps2_cli, static_str::StaticString};
+use crate::{KERNEL, printer::VGAText, programs::ps2_cli::ps2_cli, static_str::StaticString};
 
 const BUF_SIZE: usize = 32;
 
 enum Command {
     PS2,
+    Mem,
     Commands,
 }
 pub struct Shell {
     tty: VGAText,
     buf: StaticString<BUF_SIZE, u8>,
-    cmds: [(&'static [u8; BUF_SIZE], Command); 2], // TODO this implementation needs work!
+    cmds: [(&'static [u8; BUF_SIZE], Command); 3], // TODO this implementation needs work!
 }
 
 impl Shell {
@@ -25,6 +26,10 @@ impl Shell {
                 (
                     b"commands\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
                     Command::Commands,
+                ),
+                (
+                    b"mem\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
+                    Command::Mem,
                 ),
             ],
         };
@@ -65,6 +70,7 @@ impl Shell {
                         match cmd_func {
                             Command::PS2 => ps2_cli(&mut self.tty),
                             Command::Commands => self.print_cmd_options(),
+                            Command::Mem => self.print_mem(),
                         }
                     }
                     return;
@@ -73,13 +79,6 @@ impl Shell {
         }
         unsafe {
             self.tty.println_ascii("Command not recognised.".as_bytes());
-        }
-    }
-
-    unsafe fn run_cmd_ps2(&mut self) {
-        unsafe {
-            self.tty.print_ascii("PS2 cmd!".as_bytes());
-            self.tty.nl();
         }
     }
 
@@ -99,6 +98,27 @@ impl Shell {
         unsafe {
             for (cmd_str, _) in &self.cmds {
                 self.tty.println_ascii(*cmd_str);
+            }
+        }
+    }
+
+    unsafe fn print_mem(&mut self) {
+        unsafe {
+            match KERNEL.get() {
+                Ok(k) => {
+                    let mem_size = k.memory_manager().lock().get_memory();
+                    match mem_size {
+                        Some(size) => {
+                            self.tty.print_hex(size);
+                            self.tty.nl();
+                        } 
+                        None => {
+                            self.tty.println_ascii("Mem?".as_bytes());
+                        },
+                    }
+
+                },
+                Err(_) => self.tty.println_ascii("Kernel Error.".as_bytes()),
             }
         }
     }

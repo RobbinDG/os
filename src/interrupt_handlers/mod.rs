@@ -21,7 +21,7 @@ pub static mut INTERRUPT_HANDLERS: [unsafe fn(Registers) -> Option<SysEvent>; 25
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
-    // 16
+    // 16, 0x10
     null_handler::null_handler,
     null_handler::null_handler,
     null_handler::null_handler,
