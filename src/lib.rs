@@ -81,28 +81,73 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 /// Detects the low memory size and stores it in this object.
 /// This implementation is *incredibly* hacky and does not account for errors.
 /// Reason 1: The address is hard coded in boot_sect.asm so we know where to read the value
-/// Reason 2: The BIOS call can only be made from real mode, so we get it 
+/// Reason 2: The BIOS call can only be made from real mode, so we get it
 ///     in the boot sector and put it away for a bit.
 /// Reason 3: The address of the stored value is in the boot sector, so we are essentially
 ///     overwriting it if ever it would get filled up.
-/// Reason 4: The interrupt 0x12 comes with an error bit on the carry flag. We don't store 
+/// Reason 4: The interrupt 0x12 comes with an error bit on the carry flag. We don't store
 ///     it right now.
 /// Reason 5: This doesn't really fix anything, if we want to expand, we need to do all this
 ///     trickery again.
-/// 
+///
 /// The solution is veritual 16 bit mode. That way, we can read it during execution.
 unsafe fn detect_low_mem() -> u16 {
     let addr = 508 as *const u16;
     unsafe { *addr }
 }
 
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+struct HighMemEntry {
+    base: u64,
+    len: u64,
+    typ: u32,
+}
+
+unsafe fn detect_high_mem() -> [Option<HighMemEntry>; 15] {
+    let mut entries = [None; 15];
+    let addr_count = 0x500 as *const u8;
+    let addr_entries = 0x510 as *const HighMemEntry;
+
+    let num_entries = unsafe { *addr_count } as usize;
+    for i in 0..15usize {
+        if i >= num_entries {
+            break;
+        }
+        let size = unsafe { *addr_count.add((1 + i) as usize) };
+        if size != 20 {
+            // This doesn't quite work yet unfortunately. The assumption is that it is always 20
+            // break;
+        }
+        let mut entry = unsafe { *addr_entries.add(i as usize) };
+        entry.typ += size as u32;                                
+        entries[i] = Some(entry)
+    }
+    entries
+}
+
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
-    KERNEL.init(unsafe { detect_low_mem() } );
+    let high_mem = unsafe { detect_high_mem() };
+    KERNEL.init(unsafe { detect_low_mem() });
     unsafe {
         if let Some(mut tty) = VGAText::get_instance() {
             tty.clear();
             tty.println_ascii("This is kernel_main.rs".as_bytes());
+            for entry in high_mem {
+                match entry {
+                    Some(mem) => {
+                        tty.print_hex(mem.base as u32);
+                        tty.nl();
+                        tty.print_hex(mem.len as u32);
+                        tty.nl();
+                        tty.print_hex(mem.typ);
+                        tty.nl();
+                        tty.nl();
+                    }
+                    None => break,
+                }
+            }
             set_isr();
             asm!("sti"); // Sets the enable interrupt flag.
             tmp();

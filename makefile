@@ -20,7 +20,7 @@ build-kernel: FORCE add-toolchain
 $(BUILD_DIR)/%.o: $(BOOT_DIR)/%.asm
 	nasm $< -g -f elf -o $@ 
 
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o build-kernel $(BUILD_DIR)/interrupt.o
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o build-kernel $(BUILD_DIR)/interrupt.o $(wildcard $(BOOT_DIR)/*/*.asm)
 	ld $(LD_ARGS) -o $@ --oformat binary $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/interrupt.o target/i386-target/release/deps/libos-*.a 
 
 $(BUILD_DIR)/kernel.elf: $(BUILD_DIR)/kernel_entry.o build-kernel $(BUILD_DIR)/interrupt.o

@@ -49,7 +49,7 @@ TOO_FEW_SECTORS_MSG:
     db 'Too few sectors', 0
 
 DISK_ERROR_STATUS_MSG:
-    db 'Disk Error. Status: ', 0
+    db 'Disk Err: ', 0
 
 BEFORE:
     db 'B', 0
