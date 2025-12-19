@@ -3,6 +3,7 @@
 #![feature(lang_items, core_intrinsics, rustc_private)]
 #![allow(internal_features)]
 #![deny(clippy::unwrap_used, clippy::expect_used)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {

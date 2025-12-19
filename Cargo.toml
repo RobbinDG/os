@@ -18,5 +18,5 @@ once_cell_no_std = { version = "0.1.1" }
 opt-level = "z"
 debug = "none"
 lto = "thin"
-panic = "immediate-abort"
+panic = "abort"
 strip = true
