@@ -86,16 +86,40 @@ impl VGAText {
     pub unsafe fn put_char(&mut self, c: u8) {
         unsafe {
             Self::put_char_raw(c, self.x, self.y);
+            self.move_cursor(1, 0);
         }
-        self.move_cursor(1, 0);
         self.update_cursor_position();
+    }
+
+    pub unsafe fn scroll(&mut self, columns: u16) {
+        let row_size_bytes = 2 * WIDTH as usize;
+        let offset = row_size_bytes * columns as usize;
+        let mut dest_row = VIDEO_MEM;
+        let clear_start = HEIGHT.wrapping_add(columns);
+        unsafe {
+            for i in 0..HEIGHT {
+                if i < clear_start {
+                    for j in 0..row_size_bytes {
+                        let dest = dest_row.add(j);
+                        let src = dest_row.add(j + offset);
+                        *dest = *src;
+                    }
+                } else {
+                    for j in 0..row_size_bytes {
+                        let dest = dest_row.add(j);
+                        *dest = b' ';
+                    }
+                }
+                dest_row = dest_row.add(row_size_bytes);
+            }
+        }
     }
 
     pub unsafe fn bs(&mut self) {
         unsafe {
             Self::put_char_raw(b' ', self.x, self.y);
+            self.move_cursor(1, 0);
         }
-        self.move_cursor(1, 0);
     }
 
     pub unsafe fn print_ascii(&mut self, s: &[u8]) {
@@ -112,7 +136,9 @@ impl VGAText {
     }
 
     pub fn nl(&mut self) {
-        self.move_cursor(0, 1);
+        unsafe {
+            self.move_cursor(0, 1);
+        }
         self.x = 0;
         self.update_cursor_position();
     }
@@ -168,9 +194,15 @@ impl VGAText {
     }
 
     #[inline]
-    fn move_cursor(&mut self, dx: i16, dy: i16) {
+    unsafe fn move_cursor(&mut self, dx: i16, dy: i16) {
         let x_acc = self.x.wrapping_add_signed(dx);
         self.x = x_acc % WIDTH;
-        self.y = (self.y.wrapping_add_signed(dy) + x_acc / WIDTH) % HEIGHT;
+        let mut new_y = self.y.wrapping_add_signed(dy) + x_acc / WIDTH;
+        if new_y >= HEIGHT {
+            let diff = new_y.wrapping_sub(HEIGHT - 1);
+            unsafe { self.scroll(diff) };
+            new_y = new_y.wrapping_sub(diff);
+        }
+        self.y = new_y;
     }
 }
