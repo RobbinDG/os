@@ -106,18 +106,26 @@ impl Shell {
         unsafe {
             match KERNEL.get() {
                 Ok(k) => {
-                    let mem_size = k.memory_manager().lock().get_memory();
-                    match mem_size {
-                        Some(size) => {
-                            self.tty.print_hex(size);
-                            self.tty.nl();
-                        } 
-                        None => {
-                            self.tty.println_ascii("Mem?".as_bytes());
-                        },
-                    }
+                    let mem = k.memory_manager().lock().get_memory();
 
-                },
+                    self.tty.print_ascii("Low mem size: ".as_bytes());
+                    self.tty.print_decimal(mem.low_mem_size);
+                    self.tty.println_ascii(" kb".as_bytes());
+                    self.tty.nl();
+                    for hm in mem.high_mem {
+                        match hm {
+                            Some(entry) => {
+                                self.tty.print_hex(entry.base);
+                                self.tty.print_ascii(" - ".as_bytes());
+                                self.tty.print_hex(entry.len);
+                                self.tty.print_ascii(" - ".as_bytes());
+                                self.tty.print_hex(entry.typ);
+                                self.tty.nl();
+                            },
+                            None => return,
+                        }
+                    }
+                }
                 Err(_) => self.tty.println_ascii("Kernel Error.".as_bytes()),
             }
         }

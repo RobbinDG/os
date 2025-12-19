@@ -62,3 +62,21 @@ impl HexPrintable for u32 {
         }
     }
 }
+
+impl HexPrintable for u64 {
+    type Item = u64;
+
+    unsafe fn convert_to_bytes(&self, buf: &mut DynArray<u8>) -> Result<(), KernelError> {
+        unsafe {
+            buf.set(7, ((self >> 0) & 0xFF) as u8)?;
+            buf.set(6, ((self >> 8) & 0xFF) as u8)?;
+            buf.set(5, ((self >> 16) & 0xFF) as u8)?;
+            buf.set(4, ((self >> 24) & 0xFF) as u8)?;
+            buf.set(3, ((self >> 32) & 0xFF) as u8)?;
+            buf.set(2, ((self >> 40) & 0xFF) as u8)?;
+            buf.set(1, ((self >> 48) & 0xFF) as u8)?;
+            buf.set(0, (self >> 56) as u8)?;
+            Ok(())
+        }
+    }
+}

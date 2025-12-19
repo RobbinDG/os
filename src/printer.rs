@@ -1,4 +1,6 @@
 use crate::{
+    decimal_printable::{DecimalDigits, DecimalPrintable},
+    dyn_array::DynArray,
     hex_printable::HexPrintable,
     ports::{read_port_byte, write_port_byte},
     vga::{Port, VGA},
@@ -121,28 +123,34 @@ impl VGAText {
         }
     }
 
-    pub unsafe fn print_hex<T: HexPrintable>(&mut self, n: T) {
+    unsafe fn print_char_buffer<'a>(&mut self, buf: DynArray<'a, u8>) {
         unsafe {
-            match n.as_hex() {
-                Ok(hex) => {
-                    for i in 0..hex.len() {
-                        match hex.get(i) {
-                            Ok(c) => self.put_char(*c),
-                            Err(_) => return,
-                        }
-                    }
+            for i in 0..buf.len() {
+                match buf.get(i) {
+                    Ok(0) => return,
+                    Ok(c) => self.put_char(*c),
+                    Err(_) => return,
                 }
+            }
+        }
+    }
+
+    pub unsafe fn print_decimal<T: DecimalPrintable + DecimalDigits>(&mut self, n: T) {
+        unsafe {
+            match n.as_decimal() {
+                Ok(dec) => self.print_char_buffer(dec),
                 Err(_) => return,
             }
         }
-        //let mut buf = [0; 4];
-        //buf[3] = Self::half_byte_to_hex_ascii(n & 0x000F);
-        //buf[2] = Self::half_byte_to_hex_ascii((n & 0x00F0) >> 4);
-        //buf[1] = Self::half_byte_to_hex_ascii((n & 0x0F00) >> 8);
-        //buf[0] = Self::half_byte_to_hex_ascii((n & 0xF000) >> 12);
-        //unsafe {
-        //    self.println_ascii(&buf);
-        //}
+    }
+
+    pub unsafe fn print_hex<T: HexPrintable>(&mut self, n: T) {
+        unsafe {
+            match n.as_hex() {
+                Ok(hex) => self.print_char_buffer(hex),
+                Err(_) => return,
+            }
+        }
     }
 
     unsafe fn put_char_raw(c: u8, x: u16, y: u16) {

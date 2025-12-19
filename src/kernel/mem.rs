@@ -1,4 +1,4 @@
-use core::arch::asm;
+use crate::kernel::pre_boot::{MemSpec, read_mem_spec};
 
 const FREE_MEM_START_ADDR: usize = 0x10000;
 const PAGE_SIZE: usize = 0x1000;
@@ -6,14 +6,14 @@ const PAGE_SIZE_MASK: usize = !(PAGE_SIZE - 1);
 
 pub struct MemoryManager {
     free_mem_addr: usize,
-    low_mem_size_kb: Option<u16>,
+    mem_spec: MemSpec,
 }
 
 impl MemoryManager {
-    pub fn new() -> Self {
+    pub unsafe fn init() -> Self {
         Self {
             free_mem_addr: FREE_MEM_START_ADDR,
-            low_mem_size_kb: None,
+            mem_spec: unsafe { read_mem_spec() },
         }
     }
 
@@ -30,11 +30,7 @@ impl MemoryManager {
 
     pub unsafe fn free(&mut self, addr: *mut u8) {}
 
-    pub unsafe fn get_memory(&mut self) -> Option<u16> {
-        self.low_mem_size_kb
-    }
-
-    pub fn set_low_mem(&mut self, mem: u16) {
-        self.low_mem_size_kb = Some(mem)
+    pub unsafe fn get_memory(&mut self) -> MemSpec {
+        self.mem_spec.clone()
     }
 }

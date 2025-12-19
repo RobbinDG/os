@@ -1,6 +1,6 @@
 use once_cell_no_std::OnceCell;
 
-use crate::kernel::mem::MemoryManager;
+use crate::kernel::{mem::MemoryManager, pre_boot::read_mem_spec};
 
 pub enum KernelError {
     NotReady,
@@ -21,9 +21,8 @@ impl KernelAcc {
 
     /// Initialise the kernel. If, somehow, this fails, we loop forever so
     /// it can be easily debugged by GDB.
-    pub fn init(&self, low_mem: u16) {
-        let kernel = Kernel::new();
-        kernel.memory_manager().lock().set_low_mem(low_mem);
+    pub unsafe fn init(&self) {
+        let kernel = unsafe { Kernel::new() };
         if let Err(_) = self.inner.set(kernel) {
             loop {}
         }
@@ -39,9 +38,9 @@ pub struct Kernel {
 }
 
 impl Kernel {
-    pub fn new() -> Self {
+    pub unsafe fn new() -> Self {
         Self {
-            mem: spin::Mutex::new(MemoryManager::new()),
+            mem: spin::Mutex::new(unsafe { MemoryManager::init() }),
         }
     }
 
