@@ -12,6 +12,5 @@
   "target-endian": "little",
   "target-c-int-width": 32,
   "target-pointer-width": 32,
-  "features": "-mmx,-sse,+soft-float",
-  "rustc-abi": "x86-softfloat"
+  "features": "-mmx,-sse,-soft-float"
 }

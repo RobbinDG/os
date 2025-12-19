@@ -1,3 +1,5 @@
+cargo-features = ["panic-immediate-abort"]
+
 [package]
 name = "os"
 version = "0.1.0"
@@ -14,6 +16,7 @@ once_cell_no_std = { version = "0.1.1" }
 
 [profile.release]
 opt-level = "z"
-debug = false 
-lto = "fat"
-panic = "abort"
+debug = "none"
+lto = "thin"
+panic = "immediate-abort"
+strip = true
