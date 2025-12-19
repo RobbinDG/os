@@ -57,7 +57,7 @@ impl VGAText {
         for i in 0..screen_size {
             unsafe {
                 let addr = VIDEO_MEM.add(i as usize * 2);
-                *addr = ' ' as u8;
+                *addr = b' ';
             }
         }
         self.x = 0;
@@ -74,13 +74,13 @@ impl VGAText {
     }
 
     pub fn update_cursor_position(&mut self) {
-        let offset = 2 * (self.y * WIDTH + self.x);
+        let offset = self.y * WIDTH + self.x;
         let hi = offset >> 8;
         let lo = offset & 0x00ff;
-        write_port_byte(Port::VGA3Out as u16, VGA::CursorHiByte as u8);
-        write_port_byte(Port::VGA3In as u16, hi as u8);
         write_port_byte(Port::VGA3Out as u16, VGA::CursorLoByte as u8);
         write_port_byte(Port::VGA3In as u16, lo as u8);
+        write_port_byte(Port::VGA3Out as u16, VGA::CursorHiByte as u8);
+        write_port_byte(Port::VGA3In as u16, hi as u8);
     }
 
     pub unsafe fn put_char(&mut self, c: u8) {
@@ -88,11 +88,12 @@ impl VGAText {
             Self::put_char_raw(c, self.x, self.y);
         }
         self.move_cursor(1, 0);
+        self.update_cursor_position();
     }
 
     pub unsafe fn bs(&mut self) {
         unsafe {
-            Self::put_char_raw(' ' as u8, self.x, self.y);
+            Self::put_char_raw(b' ', self.x, self.y);
         }
         self.move_cursor(1, 0);
     }
@@ -127,11 +128,15 @@ impl VGAText {
         unsafe {
             for i in 0..buf.len() {
                 match buf.get(i) {
-                    Ok(0) => return,
-                    Ok(c) => self.put_char(*c),
-                    Err(_) => return,
+                    Ok(0) => break,
+                    Ok(c) => {
+                        Self::put_char_raw(*c, self.x, self.y);
+                        self.move_cursor(1, 0);
+                    }
+                    Err(_) => break,
                 }
             }
+            self.update_cursor_position();
         }
     }
 
@@ -167,16 +172,5 @@ impl VGAText {
         let x_acc = self.x.wrapping_add_signed(dx);
         self.x = x_acc % WIDTH;
         self.y = (self.y.wrapping_add_signed(dy) + x_acc / WIDTH) % HEIGHT;
-    }
-
-    /**
-     * Converts the lowest half-byte to a hex ASCII character.
-     */
-    fn half_byte_to_hex_ascii(n: u16) -> u8 {
-        if n <= 9 {
-            '0' as u8 + n as u8
-        } else {
-            'A' as u8 + (n - 10) as u8
-        }
     }
 }
