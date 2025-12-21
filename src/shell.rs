@@ -119,7 +119,7 @@ impl Shell {
                                 self.tty.print_ascii(" - ".as_bytes());
                                 self.tty.print_hex(entry.len);
                                 self.tty.print_ascii(" - ".as_bytes());
-                                self.tty.print_hex(entry.typ);
+                                self.tty.print_hex::<u8>((&entry.typ).into());
                                 self.tty.nl();
                             },
                             None => return,

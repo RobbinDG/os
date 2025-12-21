@@ -2,10 +2,64 @@ pub const MAX_HIGH_MEM_ENTRIES: usize = 15;
 
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
+struct RawHighMemEntry {
+    base: u64,
+    len: u64,
+    typ: u32,
+}
+
+#[derive(Clone, Copy)]
+pub enum MemType {
+    Usable,
+    Reserved,
+    ACPIReclaimable,
+    ACPI,
+    Bad,
+    Error,
+}
+
+impl From<u32> for MemType {
+    fn from(value: u32) -> Self {
+        match value {
+            1 => MemType::Usable,
+            2 => MemType::Reserved,
+            3 => MemType::ACPIReclaimable,
+            4 => MemType::ACPI,
+            5 => MemType::Bad,
+            _ => MemType::Error,
+        }
+    }
+}
+
+impl Into<u8> for &MemType {
+    fn into(self) -> u8 {
+        match self {
+            MemType::Usable => 1,
+            MemType::Reserved => 2,
+            MemType::ACPIReclaimable => 3,
+            MemType::ACPI => 4,
+            MemType::Bad => 5,
+            MemType::Error => 0,
+        }
+    }
+}
+
+
+#[derive(Clone, Copy)]
 pub struct HighMemEntry {
     pub base: u64,
     pub len: u64,
-    pub typ: u32,
+    pub typ: MemType,
+}
+
+impl From<RawHighMemEntry> for HighMemEntry {
+    fn from(value: RawHighMemEntry) -> Self {
+        Self {
+            base: value.base,
+            len: value.len,
+            typ: value.typ.into()
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -35,7 +89,7 @@ unsafe fn detect_low_mem() -> u16 {
 unsafe fn detect_high_mem() -> [Option<HighMemEntry>; MAX_HIGH_MEM_ENTRIES] {
     let mut entries = [None; MAX_HIGH_MEM_ENTRIES];
     let addr_count = 0x500 as *const u8;
-    let addr_entries = 0x510 as *const HighMemEntry;
+    let addr_entries = 0x510 as *const RawHighMemEntry;
 
     let num_entries = unsafe { *addr_count } as usize;
     for i in 0..MAX_HIGH_MEM_ENTRIES {
@@ -48,7 +102,7 @@ unsafe fn detect_high_mem() -> [Option<HighMemEntry>; MAX_HIGH_MEM_ENTRIES] {
             // break;
         }
         let entry = unsafe { *addr_entries.add(i as usize) };
-        entries[i] = Some(entry)
+        entries[i] = Some(HighMemEntry::from(entry))
     }
     entries
 }
