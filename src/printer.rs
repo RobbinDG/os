@@ -2,13 +2,9 @@ use crate::{
     decimal_printable::{DecimalDigits, DecimalPrintable},
     dyn_array::DynArray,
     hex_printable::HexPrintable,
-    ports::{read_port_byte, write_port_byte},
-    vga::{Port, VGA},
+    kernel::vga_driver::{HEIGHT, VGAText, WIDTH},
 };
 
-const VIDEO_MEM: *mut u8 = 0xb8000 as *mut u8;
-const WIDTH: u16 = 80;
-const HEIGHT: u16 = 25;
 static mut X: u16 = 0;
 static mut Y: u16 = 0;
 static mut ACTIVE: bool = false;
@@ -20,28 +16,34 @@ static mut ACTIVE: bool = false;
 /// it copies this state, storing it back when dropped. This circumvents
 /// problems with mutably borrowing static mutables and follows borrowing
 /// rules.
-pub struct VGAText {
+pub struct VGATextWriter<'a> {
     x: u16,
     y: u16,
+    driver: &'a mut VGAText,
 }
 
-impl VGAText {
+impl<'a> VGATextWriter<'a> {
+    /// Creates a new instance using a driver. The state is not synchronized and
+    /// will overwrite existing text when needed.
+    pub unsafe fn create(driver: &'a mut VGAText) -> VGATextWriter<'a> {
+        unsafe { Self { x: X, y: Y, driver } }
+    }
+
     /// Obtains an instance of the TTY, if one has not been used yet.
     /// The returned Option acts as a non-blocking lock, returning `None`
     /// when an instance is already in use.
-    pub unsafe fn get_instance() -> Option<Self> {
+    pub unsafe fn get_instance(driver: &'a mut VGAText) -> Option<VGATextWriter<'a>> {
         unsafe {
             if ACTIVE {
                 None
             } else {
-                ACTIVE = true;
-                Some(Self { x: X, y: Y })
+                Some(Self::create(driver))
             }
         }
     }
 }
 
-impl Drop for VGAText {
+impl<'a> Drop for VGATextWriter<'a> {
     fn drop(&mut self) {
         unsafe {
             X = self.x;
@@ -51,73 +53,39 @@ impl Drop for VGAText {
     }
 }
 
-impl VGAText {
+impl<'a> VGATextWriter<'a> {
     pub unsafe fn clear(&mut self) {
-        let screen_size = WIDTH * HEIGHT;
-        for i in 0..screen_size {
-            unsafe {
-                let addr = VIDEO_MEM.add(i as usize * 2);
-                *addr = b' ';
-            }
+        for i in 0..HEIGHT {
+            unsafe { self.driver.clear_row(i) };
         }
         self.x = 0;
         self.y = 0;
-        self.update_cursor_position();
-    }
-
-    pub fn get_cursor_position(&self) -> usize {
-        write_port_byte(Port::VGA3Out as u16, VGA::CursorHiByte as u8);
-        let mut offset = (read_port_byte(Port::VGA3In as u16) as usize) << 8;
-        write_port_byte(Port::VGA3Out as u16, VGA::CursorLoByte as u8);
-        offset += read_port_byte(Port::VGA3In as u16) as usize;
-        offset * 2
-    }
-
-    pub fn update_cursor_position(&mut self) {
-        let offset = self.y * WIDTH + self.x;
-        let hi = offset >> 8;
-        let lo = offset & 0x00ff;
-        write_port_byte(Port::VGA3Out as u16, VGA::CursorLoByte as u8);
-        write_port_byte(Port::VGA3In as u16, lo as u8);
-        write_port_byte(Port::VGA3Out as u16, VGA::CursorHiByte as u8);
-        write_port_byte(Port::VGA3In as u16, hi as u8);
+        self.driver.update_cursor_position(self.x, self.y);
     }
 
     pub unsafe fn put_char(&mut self, c: u8) {
         unsafe {
-            Self::put_char_raw(c, self.x, self.y);
+            self.driver.put_char_raw(c, self.x, self.y);
             self.move_cursor(1, 0);
         }
-        self.update_cursor_position();
+        self.driver.update_cursor_position(self.x, self.y);
     }
 
     pub unsafe fn scroll(&mut self, columns: u16) {
-        let row_size_bytes = 2 * WIDTH as usize;
-        let offset = row_size_bytes * columns as usize;
-        let mut dest_row = VIDEO_MEM;
-        let clear_start = HEIGHT.wrapping_add(columns);
         unsafe {
             for i in 0..HEIGHT {
-                if i < clear_start {
-                    for j in 0..row_size_bytes {
-                        let dest = dest_row.add(j);
-                        let src = dest_row.add(j + offset);
-                        *dest = *src;
-                    }
+                if i + columns < HEIGHT {
+                    self.driver.copy_row(i + columns, i);
                 } else {
-                    for j in 0..row_size_bytes {
-                        let dest = dest_row.add(j);
-                        *dest = b' ';
-                    }
+                    self.driver.clear_row(i);
                 }
-                dest_row = dest_row.add(row_size_bytes);
             }
         }
     }
 
     pub unsafe fn bs(&mut self) {
         unsafe {
-            Self::put_char_raw(b' ', self.x, self.y);
+            self.driver.put_char_raw(b' ', self.x, self.y);
             self.move_cursor(1, 0);
         }
     }
@@ -128,11 +96,11 @@ impl VGAText {
                 if *c == 0x00 {
                     break;
                 }
-                Self::put_char_raw(*c, self.x, self.y);
+                self.driver.put_char_raw(*c, self.x, self.y);
                 self.move_cursor(1, 0);
             }
         }
-        self.update_cursor_position();
+        self.driver.update_cursor_position(self.x, self.y);
     }
 
     pub fn nl(&mut self) {
@@ -140,7 +108,7 @@ impl VGAText {
             self.move_cursor(0, 1);
         }
         self.x = 0;
-        self.update_cursor_position();
+        self.driver.update_cursor_position(self.x, self.y);
     }
 
     pub unsafe fn println_ascii(&mut self, s: &[u8]) {
@@ -150,19 +118,19 @@ impl VGAText {
         }
     }
 
-    unsafe fn print_char_buffer<'a>(&mut self, buf: DynArray<'a, u8>) {
+    unsafe fn print_char_buffer<'b>(&mut self, buf: DynArray<'b, u8>) {
         unsafe {
             for i in 0..buf.len() {
                 match buf.get(i) {
                     Ok(0) => break,
                     Ok(c) => {
-                        Self::put_char_raw(*c, self.x, self.y);
+                        self.driver.put_char_raw(*c, self.x, self.y);
                         self.move_cursor(1, 0);
                     }
                     Err(_) => break,
                 }
             }
-            self.update_cursor_position();
+            self.driver.update_cursor_position(self.x, self.y);
         }
     }
 
@@ -184,16 +152,6 @@ impl VGAText {
         }
     }
 
-    unsafe fn put_char_raw(c: u8, x: u16, y: u16) {
-        unsafe {
-            let char_addr: *mut u8 = VIDEO_MEM.add(2 * (y * WIDTH + x) as usize);
-            let col_addr = char_addr.add(1);
-            char_addr.write_unaligned(c);
-            col_addr.write_unaligned(0x0f);
-        }
-    }
-
-    #[inline]
     unsafe fn move_cursor(&mut self, dx: i16, dy: i16) {
         let x_acc = self.x.wrapping_add_signed(dx);
         self.x = x_acc % WIDTH;

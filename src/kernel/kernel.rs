@@ -1,6 +1,13 @@
+use core::arch::asm;
+
 use once_cell_no_std::OnceCell;
 
-use crate::kernel::{mem::MemoryManager, pre_boot::read_mem_spec};
+use crate::{
+    kernel::{
+        isr::set_isr, keyboard_driver::KeyboardDriver, mem::MemoryManager, vga_driver::VGAText,
+    },
+    printer::VGATextWriter,
+};
 
 pub enum KernelError {
     NotReady,
@@ -22,10 +29,13 @@ impl KernelAcc {
     /// Initialise the kernel. If, somehow, this fails, we loop forever so
     /// it can be easily debugged by GDB.
     pub unsafe fn init(&self) {
-        let kernel = unsafe { Kernel::new() };
-        if let Err(_) = self.inner.set(kernel) {
-            loop {}
+        if let Ok(kernel) = unsafe { Kernel::new() } {
+            if let Err(_) = self.inner.set(kernel) {
+                loop {}
+            }
+            return;
         }
+        loop {}
     }
 
     pub fn get(&self) -> Result<&Kernel, KernelError> {
@@ -35,16 +45,59 @@ impl KernelAcc {
 
 pub struct Kernel {
     mem: spin::Mutex<MemoryManager>,
+    keyboard_driver: spin::Mutex<KeyboardDriver>,
+    vga_driver: spin::Mutex<VGAText>,
 }
 
 impl Kernel {
-    pub unsafe fn new() -> Self {
-        Self {
-            mem: spin::Mutex::new(unsafe { MemoryManager::init() }),
+    pub unsafe fn new() -> Result<Self, ()> {
+        unsafe {
+            // Setup interrupt handling
+            set_isr();
+
+            // Create kernel components
+            let mem = MemoryManager::init();
+
+            // Initialise drivers
+            let mut vga_drv = VGAText {};
+            let mut tty = match VGATextWriter::get_instance(&mut vga_drv) {
+                Some(tty) => tty,
+                None => return Err(()),
+            };
+
+            tty.clear();
+
+            let keyboard_drv = match KeyboardDriver::initialise() {
+                Ok(drv) => drv,
+                Err(_) => {
+                    tty.println_ascii("Couldn't load keyboard driver.".as_bytes());
+                    loop {}
+                }
+            };
+            asm!("sti"); // Sets the enable interrupt flag.
+
+            // Cleanup used references to drivers.
+            // This is done to avoid adding more nesting to this process.
+            drop(tty);
+
+            // Done
+            Ok(Self {
+                mem: spin::Mutex::new(mem),
+                keyboard_driver: spin::Mutex::new(keyboard_drv),
+                vga_driver: spin::Mutex::new(vga_drv),
+            })
         }
     }
 
     pub fn memory_manager(&self) -> &spin::Mutex<MemoryManager> {
         &self.mem
+    }
+
+    pub fn vga_driver(&self) -> &spin::Mutex<VGAText> {
+        &self.vga_driver
+    }
+
+    pub fn keyboard_driver(&self) -> &spin::Mutex<KeyboardDriver> {
+        &self.keyboard_driver
     }
 }

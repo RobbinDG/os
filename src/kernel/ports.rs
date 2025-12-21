@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::isr::{clear_last_interrupt, last_interrupt};
+use crate::kernel::isr::{clear_last_interrupt, last_interrupt};
 
 pub enum Port {
     MBHexDisplay = 0x0080, // Unused after POST, used for IO waiting.

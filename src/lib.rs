@@ -10,19 +10,12 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+mod decimal_printable;
 mod dyn_array;
 mod hex_printable;
-mod decimal_printable;
-mod idt;
-mod interrupt_handlers;
-mod isr;
 mod kernel;
-mod keyboard_driver;
-mod pic;
-mod ports;
 mod printer;
 mod programs;
-mod ps2;
 mod shell;
 mod static_str;
 mod sys_event;
@@ -31,14 +24,7 @@ mod vga;
 
 use core::arch::asm;
 
-use crate::{
-    isr::{empty_event_buffer, set_isr},
-    kernel::kernel::KernelAcc,
-    keyboard_driver::KeyboardDriver,
-    printer::VGAText,
-    ps2::tmp,
-    shell::Shell,
-};
+use crate::{kernel::{isr::empty_event_buffer, kernel::KernelAcc}, printer::VGATextWriter, shell::Shell};
 
 static KERNEL: KernelAcc = KernelAcc::new();
 /*
@@ -83,48 +69,35 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
 }
     */
 
-
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
     unsafe {
         KERNEL.init();
-        if let Some(mut tty) = VGAText::get_instance() {
-            tty.clear();
-            tty.println_ascii("This is kernel_main.rs".as_bytes());
-            set_isr();
-            asm!("sti"); // Sets the enable interrupt flag.
-            tmp();
-        }
-        let mut keyboard_drv = match KeyboardDriver::initialise() {
-            Ok(drv) => drv,
-            Err(_) => {
-                if let Some(mut tty) = VGAText::get_instance() {
-                    tty.println_ascii("Couldn't load keyboard driver.".as_bytes());
-                }
-                loop {}
-            }
-        };
-        if let Some(tty) = VGAText::get_instance() {
-            let mut shell = Shell::new(tty);
-            loop {
-                asm!("hlt");
-                let event_buf = empty_event_buffer();
-                for i in 0..event_buf.len() {
-                    if let Some(Some(event)) = event_buf.get(i) {
-                        match event {
-                            sys_event::SysEvent::Keyboard => {
-                                if let Some(key) = keyboard_drv.keyboard_interrupt_handler() {
-                                    shell.handle_key(key);
+        if let Ok(kernel) = KERNEL.get() {
+            let mut vga = kernel.vga_driver().lock();
+            if let Some(tty) = VGATextWriter::get_instance(&mut vga) {
+                let mut shell = Shell::new(tty);
+                loop {
+                    asm!("hlt");
+                    let event_buf = empty_event_buffer();
+                    for i in 0..event_buf.len() {
+                        if let Some(Some(event)) = event_buf.get(i) {
+                            match event {
+                                sys_event::SysEvent::Keyboard => {
+                                    if let Some(key) =
+                                        kernel.keyboard_driver().lock().keyboard_interrupt_handler()
+                                    {
+                                        shell.handle_key(key);
+                                    }
                                 }
                             }
+                        } else {
+                            break;
                         }
-                    } else {
-                        break;
                     }
                 }
             }
-        } else {
-            loop {}
         }
+        loop {}
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
-    ports::{Port, kernel_write_port_byte, read_port_byte, write_port_byte},
-    printer::VGAText,
+    kernel::ports::{Port, read_port_byte, write_port_byte},
+    printer::VGATextWriter,
     util::read_bit_mask,
 };
 
@@ -29,10 +29,11 @@ enum PS2DeviceCommand {
     DisableScanning = 0xF5,
 }
 
+/*
 pub fn tmp() {
     let status = unsafe { read_status() };
     unsafe {
-        if let Some(mut tty) = VGAText::get_instance() {
+        if let Some(mut tty) = VGATextWriter::get_instance() {
             match status {
                 Ok(s) => {
                     if s.output_buf_full {
@@ -55,6 +56,7 @@ pub fn tmp() {
         }
     }
 }
+*/
 
 unsafe fn read_status() -> Result<PS2Status, PS2Error> {
     let status_reg = read_port_byte(Port::PS2StatusCmdReg as u16);
@@ -91,41 +93,32 @@ pub enum KeyboardInitError {
     Unknown,
 }
 
-pub unsafe fn identity_devices() -> Result<(u8, u8), KeyboardInitError> {
-    unsafe {
-        if let Some(mut tty) = VGAText::get_instance() {
-            // Send disable scanning command (0xF5) to device
-            write_port_byte(
-                Port::PS2DataPort as u16,
-                PS2DeviceCommand::DisableScanning as u8,
-            );
-            // Wait for ACK (0xFA)
-            if read_port_byte(Port::PS2DataPort as u16) != 0xFA {
-                return Err(KeyboardInitError::NoDisableAck);
-            }
-
-            // Send identify command (0xF2)
-            write_port_byte(Port::PS2DataPort as u16, PS2DeviceCommand::Identify as u8);
-
-            // Wait for ACK (0xFA)
-            if read_port_byte(Port::PS2DataPort as u16) != 0xFA {
-                return Err(KeyboardInitError::NoIdentiyAck);
-            }
-
-            // Wait for reply and/or timeout
-            let b1 = read_port_byte(Port::PS2DataPort as u16);
-            tty.print_ascii("B1: ".as_bytes());
-            tty.print_hex(b1);
-            let b2 = read_port_byte(Port::PS2DataPort as u16);
-            tty.print_ascii("B2 ".as_bytes());
-            tty.print_hex(b2);
-            // Send enable scanning command (0xF4)
-            write_port_byte(
-                Port::PS2DataPort as u16,
-                PS2DeviceCommand::EnableScanning as u8,
-            );
-            return Ok((b1, b2));
-        }
-        Err(KeyboardInitError::Unknown)
+pub fn identity_devices() -> Result<(u8, u8), KeyboardInitError> {
+    // Send disable scanning command (0xF5) to device
+    write_port_byte(
+        Port::PS2DataPort as u16,
+        PS2DeviceCommand::DisableScanning as u8,
+    );
+    // Wait for ACK (0xFA)
+    if read_port_byte(Port::PS2DataPort as u16) != 0xFA {
+        return Err(KeyboardInitError::NoDisableAck);
     }
+
+    // Send identify command (0xF2)
+    write_port_byte(Port::PS2DataPort as u16, PS2DeviceCommand::Identify as u8);
+
+    // Wait for ACK (0xFA)
+    if read_port_byte(Port::PS2DataPort as u16) != 0xFA {
+        return Err(KeyboardInitError::NoIdentiyAck);
+    }
+
+    // Wait for reply and/or timeout
+    let b1 = read_port_byte(Port::PS2DataPort as u16);
+    let b2 = read_port_byte(Port::PS2DataPort as u16);
+    // Send enable scanning command (0xF4)
+    write_port_byte(
+        Port::PS2DataPort as u16,
+        PS2DeviceCommand::EnableScanning as u8,
+    );
+    Ok((b1, b2))
 }

@@ -1,7 +1,8 @@
 mod null_handler;
 mod keyboard;
 
-use crate::{isr::Registers, sys_event::SysEvent};
+use crate::sys_event::SysEvent;
+use crate::kernel::isr::Registers;
 
 pub static mut INTERRUPT_HANDLERS: [unsafe fn(Registers) -> Option<SysEvent>; 256] = [
     // 0

@@ -1,10 +1,9 @@
 use core::arch::asm;
 
 use crate::{
-    idt::{IDTGate, IDTReg},
-    interrupt_handlers::INTERRUPT_HANDLERS,
-    pic::PIC,
-    printer::VGAText,
+    kernel::idt::{IDTGate, IDTReg},
+    kernel::interrupt_handlers::INTERRUPT_HANDLERS,
+    kernel::pic::PIC,
     sys_event::SysEvent,
 };
 
@@ -152,11 +151,7 @@ pub struct Registers {
 #[unsafe(no_mangle)]
 unsafe extern "C" fn isr_handler(regs: Registers) {
     unsafe {
-        if let Some(mut tty) = VGAText::get_instance() {
-            LAST_INTERRUPT = regs.int_no;
-            tty.println_ascii(ISR_EXCEPTION_MSGS[regs.int_no as usize].as_bytes());
-            tty.print_hex(regs.int_no);
-        }
+        LAST_INTERRUPT = regs.int_no;
     }
 }
 

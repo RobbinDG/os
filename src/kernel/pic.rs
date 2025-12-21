@@ -1,4 +1,4 @@
-use crate::ports::{Port, io_wait, write_port_byte};
+use crate::kernel::ports::{Port, io_wait, write_port_byte};
 
 const EOI: u8 = 0x20;
 const CASCADE_IRQ: u8 = 2;

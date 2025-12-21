@@ -1,4 +1,4 @@
-use crate::{KERNEL, printer::VGAText, programs::ps2_cli::ps2_cli, static_str::StaticString};
+use crate::{KERNEL, printer::VGATextWriter, programs::ps2_cli::ps2_cli, static_str::StaticString};
 
 const BUF_SIZE: usize = 32;
 
@@ -7,14 +7,14 @@ enum Command {
     Mem,
     Commands,
 }
-pub struct Shell {
-    tty: VGAText,
+pub struct Shell<'a> {
+    tty: VGATextWriter<'a>,
     buf: StaticString<BUF_SIZE, u8>,
     cmds: [(&'static [u8; BUF_SIZE], Command); 3], // TODO this implementation needs work!
 }
 
-impl Shell {
-    pub unsafe fn new(tty: VGAText) -> Self {
+impl<'a> Shell<'a> {
+    pub unsafe fn new(tty: VGATextWriter<'a>) -> Self {
         let mut self_ = Self {
             tty,
             buf: StaticString::new(0),

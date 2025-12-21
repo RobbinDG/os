@@ -1,6 +1,6 @@
 use crate::{
-    ports::{Port, read_port_byte},
-    ps2::{KeyboardInitError, identity_devices},
+    kernel::ports::{Port, read_port_byte},
+    kernel::ps2::{KeyboardInitError, identity_devices},
 };
 
 const LOWER_CASE_OFFSET: u8 = 0x20;
