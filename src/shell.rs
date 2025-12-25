@@ -43,6 +43,7 @@ impl<'a> Shell<'a> {
                 0x08 => {
                     if self.buf.len() > 0 {
                         self.tty.bs();
+                        self.buf.pop();
                     }
                 }
                 0x0A => {
