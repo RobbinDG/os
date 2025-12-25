@@ -85,8 +85,9 @@ impl<'a> VGATextWriter<'a> {
 
     pub unsafe fn bs(&mut self) {
         unsafe {
-            self.driver.put_char_raw(b' ', self.x, self.y);
-            self.move_cursor(1, 0);
+            self.driver.put_char_raw(b' ', self.x - 1, self.y);
+            self.move_cursor(-1, 0);
+            self.driver.update_cursor_position(self.x, self.y);
         }
     }
 
