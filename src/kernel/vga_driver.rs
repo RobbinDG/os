@@ -1,3 +1,5 @@
+use core::ptr;
+
 use crate::{
     kernel::ports::{read_port_byte, write_port_byte},
     vga::{Port, VGA},
@@ -60,11 +62,7 @@ impl VGAText {
         unsafe {
             let src_row = VIDEO_MEM.add((CHAR_SIZE * WIDTH * src) as usize);
             let dst_row = VIDEO_MEM.add((CHAR_SIZE * WIDTH * dst) as usize);
-            for j in 0..((WIDTH * CHAR_SIZE) as usize) {
-                let src = src_row.add(j);
-                let dest = dst_row.add(j);
-                *dest = *src;
-            }
+            ptr::copy_nonoverlapping(src_row, dst_row, (WIDTH * CHAR_SIZE) as usize);
         }
     }
 }
