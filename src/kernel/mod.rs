@@ -9,3 +9,4 @@ mod ports;
 pub mod pre_boot;
 mod ps2;
 pub mod vga_driver;
+pub mod acpi;

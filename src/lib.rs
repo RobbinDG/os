@@ -24,7 +24,11 @@ mod vga;
 
 use core::arch::asm;
 
-use crate::{kernel::{isr::empty_event_buffer, kernel::KernelAcc}, printer::VGATextWriter, shell::Shell};
+use crate::{
+    kernel::{acpi::acpi::ACPI, isr::empty_event_buffer, kernel::KernelAcc},
+    printer::VGATextWriter,
+    shell::Shell,
+};
 
 static KERNEL: KernelAcc = KernelAcc::new();
 /*
@@ -75,7 +79,16 @@ pub extern "C" fn kernel_main() -> ! {
         KERNEL.init();
         if let Ok(kernel) = KERNEL.get() {
             let mut vga = kernel.vga_driver().lock();
-            if let Some(tty) = VGATextWriter::get_instance(&mut vga) {
+            if let Some(mut tty) = VGATextWriter::get_instance(&mut vga) {
+                match ACPI::load() {
+                    Some(acpi) => {
+                        let mut iter = acpi.iter();
+                        while let Some(header) = iter.next() {
+                            tty.println_ascii(&header.signature)
+                        }
+                    }
+                    None => tty.println_ascii("No RDSP".as_bytes()),
+                }
                 let mut shell = Shell::new(tty);
                 loop {
                     asm!("hlt");
