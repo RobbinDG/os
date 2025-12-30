@@ -3,6 +3,7 @@ use crate::{KERNEL, printer::VGATextWriter, programs::ps2_cli::ps2_cli, static_s
 const BUF_SIZE: usize = 32;
 
 enum Command {
+    Empty,
     PS2,
     Mem,
     Commands,
@@ -10,7 +11,20 @@ enum Command {
 pub struct Shell<'a> {
     tty: VGATextWriter<'a>,
     buf: StaticString<BUF_SIZE, u8>,
-    cmds: [(&'static [u8; BUF_SIZE], Command); 3], // TODO this implementation needs work!
+    cmds: [([u8; BUF_SIZE], Command); 4], // TODO this implementation needs work!
+}
+
+const fn make_command(command_str: &str) -> [u8; BUF_SIZE] {
+    let bytes: &[u8] = command_str.as_bytes();
+    assert!(bytes.len() <= BUF_SIZE);
+
+    let mut out: [u8; BUF_SIZE] = [0u8; BUF_SIZE];
+    let mut i = 0;
+    while i < bytes.len() {    
+        out[i] = bytes[i];
+        i += 1;
+    }
+    out
 }
 
 impl<'a> Shell<'a> {
@@ -19,18 +33,10 @@ impl<'a> Shell<'a> {
             tty,
             buf: StaticString::new(0),
             cmds: [
-                (
-                    b"PS2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
-                    Command::PS2,
-                ),
-                (
-                    b"commands\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
-                    Command::Commands,
-                ),
-                (
-                    b"mem\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
-                    Command::Mem,
-                ),
+                (make_command(""), Command::Empty),
+                (make_command("ps2"), Command::PS2),
+                (make_command("commands"), Command::Commands),
+                (make_command("mem"), Command::Mem),
             ],
         };
         unsafe { self_.print_flair() };
@@ -69,6 +75,7 @@ impl<'a> Shell<'a> {
                 if cmd_str[i] == b'\0' {
                     unsafe {
                         match cmd_func {
+                            Command::Empty => {},
                             Command::PS2 => ps2_cli(&mut self.tty),
                             Command::Commands => self.print_cmd_options(),
                             Command::Mem => self.print_mem(),
@@ -98,7 +105,7 @@ impl<'a> Shell<'a> {
     unsafe fn print_cmd_options(&mut self) {
         unsafe {
             for (cmd_str, _) in &self.cmds {
-                self.tty.println_ascii(*cmd_str);
+                self.tty.println_ascii(cmd_str);
             }
         }
     }
@@ -122,7 +129,7 @@ impl<'a> Shell<'a> {
                                 self.tty.print_ascii(" - ".as_bytes());
                                 self.tty.print_hex::<u8>((&entry.typ).into());
                                 self.tty.nl();
-                            },
+                            }
                             None => return,
                         }
                     }
