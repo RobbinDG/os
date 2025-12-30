@@ -4,7 +4,8 @@ use once_cell_no_std::OnceCell;
 
 use crate::{
     kernel::{
-        isr::set_isr, keyboard_driver::KeyboardDriver, mem::MemoryManager, vga_driver::VGAText,
+        isr::set_isr, keyboard_driver::KeyboardDriver, mem::MemoryManager,
+        process_manager::ProcessManager, vga_driver::VGAText,
     },
     printer::VGATextWriter,
 };
@@ -45,6 +46,7 @@ impl KernelAcc {
 
 pub struct Kernel {
     mem: spin::Mutex<MemoryManager>,
+    pm: spin::Mutex<ProcessManager>,
     keyboard_driver: spin::Mutex<KeyboardDriver>,
     vga_driver: spin::Mutex<VGAText>,
 }
@@ -83,6 +85,7 @@ impl Kernel {
             // Done
             Ok(Self {
                 mem: spin::Mutex::new(mem),
+                pm: spin::Mutex::new(ProcessManager {}),
                 keyboard_driver: spin::Mutex::new(keyboard_drv),
                 vga_driver: spin::Mutex::new(vga_drv),
             })
@@ -91,6 +94,10 @@ impl Kernel {
 
     pub fn memory_manager(&self) -> &spin::Mutex<MemoryManager> {
         &self.mem
+    }
+
+    pub fn process_manager(&self) -> &spin::Mutex<ProcessManager> {
+        &self.pm
     }
 
     pub fn vga_driver(&self) -> &spin::Mutex<VGAText> {

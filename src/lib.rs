@@ -73,11 +73,16 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
 }
     */
 
+fn sample_process() {
+    
+}
+
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
     unsafe {
         KERNEL.init();
         if let Ok(kernel) = KERNEL.get() {
+            kernel.process_manager().lock().start_process(sample_process);
             let mut vga = kernel.vga_driver().lock();
             if let Some(mut tty) = VGATextWriter::get_instance(&mut vga) {
                 match ACPI::load() {
