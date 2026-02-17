@@ -31,6 +31,21 @@ use crate::{
 };
 
 static KERNEL: KernelAcc = KernelAcc::new();
+
+#[inline(never)]
+pub unsafe extern "C" fn scheduler_entrypoint() -> ! {
+    loop {
+        if let Ok(kernel) = KERNEL.get() {
+            let process = unsafe {
+                kernel
+                    .process_manager()
+                    .lock()
+                    .create_process(sample_process)
+            };
+            kernel.scheduler.run_process(&process);
+        }
+    }
+}
 /*
 use core::ptr;
 
@@ -72,17 +87,14 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     }
 }
     */
-
-fn sample_process() {
-    
-}
+#[inline(never)]
+fn sample_process() {}
 
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
     unsafe {
         KERNEL.init();
         if let Ok(kernel) = KERNEL.get() {
-            kernel.process_manager().lock().start_process(sample_process);
             let mut vga = kernel.vga_driver().lock();
             if let Some(mut tty) = VGATextWriter::get_instance(&mut vga) {
                 match ACPI::load() {
@@ -95,6 +107,7 @@ pub extern "C" fn kernel_main() -> ! {
                     None => tty.println_ascii("No RDSP".as_bytes()),
                 }
                 let mut shell = Shell::new(tty);
+                scheduler_entrypoint();
                 loop {
                     asm!("hlt");
                     let event_buf = empty_event_buffer();

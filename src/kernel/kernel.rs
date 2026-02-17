@@ -4,8 +4,7 @@ use once_cell_no_std::OnceCell;
 
 use crate::{
     kernel::{
-        isr::set_isr, keyboard_driver::KeyboardDriver, mem::MemoryManager,
-        process_manager::ProcessManager, vga_driver::VGAText,
+        isr::set_isr, keyboard_driver::KeyboardDriver, mem::MemoryManager, process_manager::ProcessManager, scheduler::Scheduler, vga_driver::VGAText
     },
     printer::VGATextWriter,
 };
@@ -45,6 +44,7 @@ impl KernelAcc {
 }
 
 pub struct Kernel {
+    pub scheduler: Scheduler,
     mem: spin::Mutex<MemoryManager>,
     pm: spin::Mutex<ProcessManager>,
     keyboard_driver: spin::Mutex<KeyboardDriver>,
@@ -84,8 +84,9 @@ impl Kernel {
 
             // Done
             Ok(Self {
+                scheduler: Scheduler::new(),
                 mem: spin::Mutex::new(mem),
-                pm: spin::Mutex::new(ProcessManager {}),
+                pm: spin::Mutex::new(ProcessManager::new()),
                 keyboard_driver: spin::Mutex::new(keyboard_drv),
                 vga_driver: spin::Mutex::new(vga_drv),
             })
