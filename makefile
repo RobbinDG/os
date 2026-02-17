@@ -10,13 +10,10 @@ LD_ARGS=-no-pie -nostdlib -m elf_i386 -T linker.ld
 OBJDUMP_ARGS=--disassembler-color=on
 LESS_ARGS=-R
 
-add-toolchain:
-	rustup component add rust-src --toolchain nightly
-
 .FORCE: ;
 
-$(TARGET): .FORCE add-toolchain
-	cargo build --release
+$(TARGET): .FORCE
+	cargo build --release -Zjson-target-spec
 
 $(BUILD_DIR)/%.o: $(BOOT_DIR)/%.asm
 	nasm $< -g -f elf -o $@ 
