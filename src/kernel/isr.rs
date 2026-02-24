@@ -1,4 +1,4 @@
-use core::arch::asm;
+use core::{arch::asm, hint::black_box};
 
 use crate::{
     kernel::idt::{IDTGate, IDTReg},
@@ -117,6 +117,8 @@ pub unsafe fn set_isr() {
         IDT[46].set(irq14);
         IDT[47].set(irq15);
 
+        IDT[128].set(isr_syscall);
+
         IDT_REG.base = &IDT[0];
         IDT_REG.limit = (core::mem::size_of::<IDTGates>() - 1) as u16;
         let idt_reg_ptr: *const u16 = &raw const IDT_REG.limit;
@@ -130,7 +132,9 @@ pub unsafe fn set_isr() {
 
 #[repr(C, packed)]
 pub struct Registers {
+    // Pushed during isr_common_stub
     pub ds: u32,
+    // Result of `pusha`
     pub edi: u32,
     pub esi: u32,
     pub ebp: u32,
@@ -139,8 +143,10 @@ pub struct Registers {
     pub edx: u32,
     pub ecx: u32,
     pub eax: u32,
+    // Manually pushed during ISR/IRQ hander in ASM
     pub int_no: u32,
-    pub err_code: u32,
+    pub err_code: u32, // Optional for built-in ISRs, so sometimes manually pushed
+    // Pushed during `int` call
     pub eip: u32,
     pub cs: u32,
     pub eflags: u32,
@@ -149,9 +155,15 @@ pub struct Registers {
 }
 
 #[unsafe(no_mangle)]
+#[inline(never)]
 unsafe extern "C" fn isr_handler(regs: Registers) {
     unsafe {
-        LAST_INTERRUPT = regs.int_no;
+        if regs.int_no & 0xFF == 0x80 {
+            black_box({
+                syscall(regs)
+            });
+        }
+        // LAST_INTERRUPT = regs.int_no;
     }
 }
 
@@ -195,6 +207,13 @@ pub unsafe fn last_interrupt() -> u32 {
         let li = LAST_INTERRUPT;
         LAST_INTERRUPT = 0;
         li
+    }
+}
+
+#[inline(never)]
+pub unsafe fn syscall(regs: Registers) {
+    unsafe {
+        asm!("mov eax, 0")
     }
 }
 
@@ -261,6 +280,7 @@ unsafe extern "C" {
     fn isr30();
 
     fn isr31();
+    fn isr_syscall();
     fn irq0();
     fn irq1();
     fn irq2();

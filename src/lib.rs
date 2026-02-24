@@ -88,7 +88,14 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
 }
     */
 #[inline(never)]
-fn sample_process() {}
+fn sample_process() {
+    unsafe {
+        asm!(
+            "mov eax, 69h",
+            "int 80h"
+        );
+    }
+}
 
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
