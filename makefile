@@ -5,6 +5,7 @@ TARGET=target/i386-target/release/libos.a
 
 ### Programs and arguments
 GDB=gdb
+GDBINIT=.gdbinit
 QEMU=qemu-system-i386
 LD_ARGS=-no-pie -nostdlib -m elf_i386 -T linker.ld
 OBJDUMP_ARGS=--disassembler-color=on
@@ -40,7 +41,7 @@ clean:
 
 debug: $(BUILD_DIR)/os-image.bin $(BUILD_DIR)/kernel.elf
 	$(QEMU) -no-reboot -s -fda $(BUILD_DIR)/os-image.bin &
-	$(GDB) -ex "target remote localhost:1234" -ex "file $(BUILD_DIR)/kernel.elf"
+	$(GDB) -ex "target remote localhost:1234"
 
 run: $(BUILD_DIR)/os-image.bin 
 	$(QEMU) -no-reboot -fda $< -boot order=ac
