@@ -1,9 +1,13 @@
 use core::{arch::asm, hint::black_box};
 
 use crate::{
-    kernel::idt::{IDTGate, IDTReg},
-    kernel::interrupt_handlers::INTERRUPT_HANDLERS,
-    kernel::pic::PIC,
+    SCHEDULER,
+    kernel::{
+        idt::{IDTGate, IDTReg},
+        interrupt_handlers::INTERRUPT_HANDLERS,
+        pic::PIC,
+        platform::i386::context_switch::{ProcessCtrlBlock, switch_context},
+    },
     sys_event::SysEvent,
 };
 
@@ -62,6 +66,53 @@ const ISR_EXCEPTION_MSGS: [&str; 32] = [
     "Reserved",
     "Reserved",
 ];
+
+pub unsafe extern "C" fn isr_common_stub_inner(data: InterruptHandlerData) {
+    unsafe {
+        asm!("push eax");
+        let (cur, new) = SCHEDULER.with(|s| {
+            let cur = s.current_process_mut() as *mut ProcessCtrlBlock;
+            let new = {
+                let new = s.scheduler_process_mut();
+                new.set_entry(isr_handler as *const () as usize);
+                // TODO is there any reason to believe that this pointer will be valid whilst handling the interrupt?
+                new.set_interrupt(&data);
+                new as *mut ProcessCtrlBlock
+            };
+            s.set_current_process(new);
+            (cur, new)
+        });
+        asm!("pop eax");
+        switch_context(cur, new);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn isr_common_stub() {
+    unsafe {
+        asm!(
+            "pusha",        // Pushes edi,esi,ebp,esp,ebx,edx,ecx,eax (needs to be on kernel stack)
+            "mov ax, ds",   // Lower 16-bits of eax = ds.
+            "push eax",     // save the data segment descriptor
+            "mov ax, 0x10", // kernel data segment descriptor
+            "mov ds, ax",
+            "mov es, ax",
+            "mov fs, ax",
+            "mov gs, ax",
+            "call {inner}",
+            "pop eax",
+            "mov ds, ax",
+            "mov es, ax",
+            "mov fs, ax",
+            "mov gs, ax",
+            "popa",
+            "add esp, 8", // Cleans up the pushed error code and pushed ISR number
+            "sti",
+            "iret", // pops 5 things at once: CS, EIP, EFLAGS, SS, and ESP
+            inner = sym isr_handler,
+        )
+    }
+}
 
 pub unsafe fn set_isr() {
     unsafe {
@@ -130,11 +181,10 @@ pub unsafe fn set_isr() {
     }
 }
 
+/// Result of `pusha`.
 #[repr(C, packed)]
+#[derive(Default)]
 pub struct Registers {
-    // Pushed during isr_common_stub
-    pub ds: u32,
-    // Result of `pusha`
     pub edi: u32,
     pub esi: u32,
     pub ebp: u32,
@@ -143,10 +193,12 @@ pub struct Registers {
     pub edx: u32,
     pub ecx: u32,
     pub eax: u32,
-    // Manually pushed during ISR/IRQ hander in ASM
-    pub int_no: u32,
-    pub err_code: u32, // Optional for built-in ISRs, so sometimes manually pushed
-    // Pushed during `int` call
+}
+
+/// Pushed during `int` call
+#[repr(C, packed)]
+#[derive(Default)]
+pub struct IntData {
     pub eip: u32,
     pub cs: u32,
     pub eflags: u32,
@@ -154,21 +206,33 @@ pub struct Registers {
     pub ss: u32,
 }
 
+#[repr(C, packed)]
+#[derive(Default)]
+pub struct InterruptHandlerData {
+    // Pushed during isr_common_stub
+    pub ds: u32,
+    // Result of `pusha`.
+    pub reg: Registers,
+    // Manually pushed during ISR/IRQ hander in ASM
+    pub int_no: u32,
+    pub err_code: u32, // Optional for built-in ISRs, so sometimes manually pushed
+
+    pub int: IntData,
+}
+
 #[unsafe(no_mangle)]
 #[inline(never)]
-unsafe extern "C" fn isr_handler(regs: Registers) {
+unsafe extern "C" fn isr_handler(regs: InterruptHandlerData) {
     unsafe {
         if regs.int_no & 0xFF == 0x80 {
-            black_box({
-                syscall(regs)
-            });
+            black_box(syscall(regs));
         }
         // LAST_INTERRUPT = regs.int_no;
     }
 }
 
 #[unsafe(no_mangle)]
-unsafe extern "C" fn irq_handler(mut regs: Registers) {
+unsafe extern "C" fn irq_handler(mut regs: InterruptHandlerData) {
     unsafe {
         PIC::send_eoi(regs.int_no as u8);
         if regs.int_no > 0 {
@@ -196,25 +260,9 @@ pub unsafe fn empty_event_buffer() -> [Option<SysEvent>; EVENT_BUF_SIZE] {
     }
 }
 
-pub unsafe fn clear_last_interrupt() {
-    unsafe {
-        LAST_INTERRUPT = 0;
-    }
-}
-
-pub unsafe fn last_interrupt() -> u32 {
-    unsafe {
-        let li = LAST_INTERRUPT;
-        LAST_INTERRUPT = 0;
-        li
-    }
-}
-
 #[inline(never)]
-pub unsafe fn syscall(regs: Registers) {
-    unsafe {
-        asm!("mov eax, 0")
-    }
+pub unsafe fn syscall(regs: InterruptHandlerData) {
+    unsafe { asm!("mov eax, 0") }
 }
 
 unsafe extern "C" {

@@ -1,6 +1,12 @@
 #![no_std] // don’t use the Rust standard library
 #![no_main]
-#![feature(lang_items, core_intrinsics, rustc_private)]
+#![feature(
+    lang_items,
+    core_intrinsics,
+    rustc_private,
+    thread_local,
+    unsafe_cell_access
+)]
 #![allow(internal_features)]
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 #![deny(unsafe_op_in_unsafe_fn)]
@@ -25,27 +31,39 @@ mod vga;
 use core::arch::asm;
 
 use crate::{
-    kernel::{acpi::acpi::ACPI, isr::empty_event_buffer, kernel::KernelAcc},
+    kernel::{
+        acpi::acpi::ACPI, global::Global, isr::empty_event_buffer, kernel::KernelAcc,
+        platform::i386::context_switch::ProcessCtrlBlock, scheduler::Scheduler,
+    },
     printer::VGATextWriter,
     shell::Shell,
 };
 
 static KERNEL: KernelAcc = KernelAcc::new();
 
+// static SCHEDULER: UnsafeCell<Scheduler> = unsafe { UnsafeCell::new(Scheduler::new()) };
+static SCHEDULER: Global<Scheduler> = unsafe { Global::new(Scheduler::new()) };
+
 #[inline(never)]
 pub unsafe extern "C" fn scheduler_entrypoint() -> ! {
     loop {
-        if let Ok(kernel) = KERNEL.get() {
-            let process = unsafe {
-                kernel
-                    .process_manager()
-                    .lock()
-                    .create_process(sample_process)
-            };
-            kernel.scheduler.run_process(&process);
-        }
+        let mut process = ProcessCtrlBlock::new_process(0x7FFFF, sample_process);
+        SCHEDULER.with(|s| {
+            s.run_process(&mut process);
+        });
     }
 }
+
+// #[unsafe(no_mangle)]
+// pub unsafe extern "C" fn switch_to_scheduler() -> ! {
+//     if let Ok(kernel) = KERNEL.get() {
+//         let cur = unsafe { kernel.scheduler.current_process() };
+//         let new = kernel.scheduler.scheduler_process();
+//         unsafe { switch_context(cur, new) }
+//     } else {
+//         panic!()
+//     }
+// }
 /*
 use core::ptr;
 
@@ -90,10 +108,7 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
 #[inline(never)]
 fn sample_process() {
     unsafe {
-        asm!(
-            "mov eax, 69h",
-            "int 80h"
-        );
+        asm!("mov eax, 69h", "int 80h");
     }
 }
 
@@ -101,6 +116,7 @@ fn sample_process() {
 pub extern "C" fn kernel_main() -> ! {
     unsafe {
         KERNEL.init();
+
         if let Ok(kernel) = KERNEL.get() {
             let mut vga = kernel.vga_driver().lock();
             if let Some(mut tty) = VGATextWriter::get_instance(&mut vga) {

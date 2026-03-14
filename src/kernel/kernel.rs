@@ -4,7 +4,15 @@ use once_cell_no_std::OnceCell;
 
 use crate::{
     kernel::{
-        isr::set_isr, keyboard_driver::KeyboardDriver, mem::MemoryManager, process_manager::ProcessManager, scheduler::Scheduler, vga_driver::VGAText
+        isr::set_isr,
+        keyboard_driver::KeyboardDriver,
+        mem::MemoryManager,
+        platform::i386::{
+            gdt::{CompiledGDTEntry, GDTEntry, GDTR},
+            tss::TSS,
+        },
+        syscalls::SysCalls,
+        vga_driver::VGAText,
     },
     printer::VGATextWriter,
 };
@@ -44,11 +52,14 @@ impl KernelAcc {
 }
 
 pub struct Kernel {
-    pub scheduler: Scheduler,
+    /// The GDT needs a static memory location native to the kernel, so
+    /// we store it as a field. Note that the entries need to be in compiled form.
+    gdt: [CompiledGDTEntry; 6],
+    tss: TSS,
     mem: spin::Mutex<MemoryManager>,
-    pm: spin::Mutex<ProcessManager>,
     keyboard_driver: spin::Mutex<KeyboardDriver>,
     vga_driver: spin::Mutex<VGAText>,
+    syscalls: SysCalls,
 }
 
 impl Kernel {
@@ -82,23 +93,24 @@ impl Kernel {
             // This is done to avoid adding more nesting to this process.
             drop(tty);
 
-            // Done
-            Ok(Self {
-                scheduler: Scheduler::new(),
+            // All state ready.
+            let mut kernel = Self {
+                gdt: Default::default(),
+                tss: TSS::new(),
                 mem: spin::Mutex::new(mem),
-                pm: spin::Mutex::new(ProcessManager::new()),
                 keyboard_driver: spin::Mutex::new(keyboard_drv),
                 vga_driver: spin::Mutex::new(vga_drv),
-            })
+                syscalls: SysCalls::new(),
+            };
+
+            kernel.tss.init(0x90000, 0x8, 0x10);
+            kernel.load_tss();
+            Ok(kernel)
         }
     }
 
     pub fn memory_manager(&self) -> &spin::Mutex<MemoryManager> {
         &self.mem
-    }
-
-    pub fn process_manager(&self) -> &spin::Mutex<ProcessManager> {
-        &self.pm
     }
 
     pub fn vga_driver(&self) -> &spin::Mutex<VGAText> {
@@ -107,5 +119,39 @@ impl Kernel {
 
     pub fn keyboard_driver(&self) -> &spin::Mutex<KeyboardDriver> {
         &self.keyboard_driver
+    }
+
+    unsafe fn load_tss(&mut self) {
+        unsafe {
+            let tr_idx = self.append_tr_to_gdt() as u16;
+            asm!(
+                "ltr {o:x}", // `ltr` takes a 16-bit register.
+                "str ax",
+                o = in(reg) tr_idx,
+            )
+        }
+    }
+
+    #[inline]
+    unsafe fn append_tr_to_gdt(&mut self) -> usize {
+        unsafe { asm!("cli") }
+        let mut gdtr = GDTR::default();
+        gdtr.load();
+
+        if let Some(e) = gdtr.entry_raw(1) {
+            self.gdt[1] = e.clone();
+        }
+        if let Some(e) = gdtr.entry_raw(2) {
+            self.gdt[2] = e.clone();
+        }
+
+        self.gdt[3] = GDTEntry::new(true).encode();
+        self.gdt[4] = GDTEntry::new(false).encode();
+
+        self.gdt[5] = GDTEntry::for_task_state_segment(&self.tss).encode();
+        let new_gdtr = GDTR::for_gdt(&self.gdt);
+        new_gdtr.store();
+        unsafe { asm!("sti") }
+        5 * core::mem::size_of::<CompiledGDTEntry>()
     }
 }

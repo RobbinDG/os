@@ -11,5 +11,7 @@ mod ports;
 pub mod pre_boot;
 mod process_manager;
 mod ps2;
-mod scheduler;
+pub mod scheduler;
 pub mod vga_driver;
+pub mod syscalls;
+pub mod global;

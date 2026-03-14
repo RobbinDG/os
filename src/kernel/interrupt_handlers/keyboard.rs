@@ -1,5 +1,5 @@
-use crate::{kernel::isr::Registers, sys_event::SysEvent};
+use crate::{kernel::isr::InterruptHandlerData, sys_event::SysEvent};
 
-pub unsafe fn keyboard_handler(_regs: Registers) -> Option<SysEvent> {
+pub unsafe fn keyboard_handler(_regs: InterruptHandlerData) -> Option<SysEvent> {
     return Some(SysEvent::Keyboard);
 }

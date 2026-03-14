@@ -1,3 +1,3 @@
-use crate::{kernel::isr::Registers, sys_event::SysEvent};
+use crate::{kernel::isr::InterruptHandlerData, sys_event::SysEvent};
 
-pub unsafe fn null_handler(_regs: Registers) -> Option<SysEvent> { None }
+pub unsafe fn null_handler(_regs: InterruptHandlerData) -> Option<SysEvent> { None }
