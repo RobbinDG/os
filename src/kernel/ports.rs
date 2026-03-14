@@ -1,7 +1,5 @@
 use core::arch::asm;
 
-use crate::kernel::isr::{clear_last_interrupt, last_interrupt};
-
 pub enum Port {
     MBHexDisplay = 0x0080, // Unused after POST, used for IO waiting.
 
@@ -72,16 +70,4 @@ pub fn read_port_word(port: u16) -> u16 {
 
 pub fn io_wait() {
     write_port_byte(Port::MBHexDisplay as u16, 0)
-}
-
-pub unsafe fn kernel_write_port_byte(port: u16, data: u8) -> Result<(), u32> {
-    unsafe {
-        clear_last_interrupt();
-        write_port_byte(port, data);
-        let int = last_interrupt();
-        if int > 0 {
-            return Err(int);
-        }
-        Ok(())
-    }
 }
