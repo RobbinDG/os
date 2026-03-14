@@ -26,7 +26,10 @@ impl IDTGate {
             lo_offset: 0,
             sel: KERNEL_CS,
             always_0: 0,
-            flags: 0x8E,
+            flags: 0b1 << 7 // P: Always present
+            | 3 << 5 // DPL: Can be called from ring 3 and below
+            | 0 << 4 // 0
+            | 0xE, // Gate Type: Interrupt gate
             hi_offset: 0,
         }
     }
@@ -39,7 +42,7 @@ impl IDTGate {
 }
 
 // The IDT register must be 6 bytes in length.
-#[repr(C, packed)] 
+#[repr(C, packed)]
 pub struct IDTReg {
     pub limit: u16,
     pub base: *const IDTGate, // assumed to be 4 bytes.
