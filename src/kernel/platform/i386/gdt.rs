@@ -2,6 +2,11 @@ use core::arch::asm;
 
 use crate::kernel::platform::i386::tss::TSS;
 
+
+unsafe extern "C" {
+    fn setGdt(limit: u32, base: u32, offset: u32);
+}
+
 #[repr(C, packed)]
 #[derive(Default)]
 pub struct GDTR {
@@ -24,9 +29,11 @@ impl GDTR {
     /// Stores the GDTR, loading the global descriptor table.
     #[inline]
     pub fn store(&self) {
+        // unsafe { setGdt(self.size as u32, self.offset, 0) }
         unsafe {
             asm!(
                 "lgdt [{loc}]",
+                "call flush_segments",
                 loc = in(reg) self,
             )
         }
@@ -34,7 +41,7 @@ impl GDTR {
 
     pub fn for_gdt<const N: usize>(gdt: &[CompiledGDTEntry; N]) -> Self {
         Self {
-            size: (N * core::mem::size_of::<CompiledGDTEntry>()) as u16,
+            size: (N * core::mem::size_of::<CompiledGDTEntry>()) as u16 - 1,
             offset: gdt as *const [CompiledGDTEntry; N] as u32,
         }
     }
@@ -85,11 +92,22 @@ impl GDTEntry {
         }
     }
 
-    pub fn for_task_state_segment(tss_ptr: &TSS) -> Self {
+    pub fn new(for_code_segment: bool) -> Self {
+        let e = (for_code_segment as u8) << 3;
         Self {
-            base: tss_ptr as *const TSS as u32,
-            limit: core::mem::size_of::<TSS>() as u32,
-            flags: 0x40,
+            base: 0x0,
+            limit: 0xfffff,
+            flags: 0b1100 << 4,
+            access: 0b11110010 | e,
+        }
+    }
+
+    pub fn for_task_state_segment(tss_ptr: &TSS) -> Self {
+        let base = tss_ptr as *const TSS as u32;
+        Self {
+            base,
+            limit: core::mem::size_of::<TSS>() as u32 - 1,
+            flags: 0x00,
             access: 0x89,
         }
     }
@@ -101,7 +119,7 @@ impl GDTEntry {
                 | ((buf[4] as u32) << 16)
                 | ((buf[7] as u32) << 24),
             limit: (buf[0] as u32) | ((buf[1] as u32) << 8) | (((buf[6] & 0x0F) as u32) << 16),
-            flags: buf[6] >> 4,
+            flags: buf[6] & 0xF0,
             access: buf[5],
         }
     }
@@ -117,10 +135,11 @@ impl GDTEntry {
         buf[1] = ((self.limit >> 8) & 0xFF) as u8;
         buf[6] = ((self.limit >> 16) & 0x0F) as u8;
 
-        buf[6] |= (self.flags) << 4;
+        buf[6] |= (self.flags) & 0xF0;
 
         buf[5] = self.access;
 
         buf
     }
 }
+

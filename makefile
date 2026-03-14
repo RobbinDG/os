@@ -2,6 +2,7 @@
 BOOT_DIR=boot
 BUILD_DIR=build
 TARGET=target/i386-target/release/libos.a 
+KERNEL_ASM=$(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/interrupt.o $(BUILD_DIR)/flush_segments.o
 
 ### Programs and arguments
 GDB=gdb
@@ -16,10 +17,14 @@ LESS_ARGS=-R
 $(TARGET): .FORCE
 	cargo build --release -Zjson-target-spec
 
+test: .FORCE 
+	cargo test --release -Zjson-target-spec
+
+
 $(BUILD_DIR)/%.o: $(BOOT_DIR)/%.asm
 	nasm $< -g -f elf -o $@ 
 
-$(BUILD_DIR)/kernel.elf: $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/interrupt.o $(TARGET) 
+$(BUILD_DIR)/kernel.elf: $(KERNEL_ASM) $(TARGET) 
 	ld $(LD_ARGS) \
 		--gc-sections \
 		-Map=final.map \
@@ -45,7 +50,6 @@ debug: $(BUILD_DIR)/os-image.bin $(BUILD_DIR)/kernel.elf
 
 run: $(BUILD_DIR)/os-image.bin 
 	$(QEMU) -no-reboot -fda $< -boot order=ac
-
 
 ### OBJDUMPs
 
