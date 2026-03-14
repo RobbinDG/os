@@ -41,7 +41,6 @@ use crate::{
 
 static KERNEL: KernelAcc = KernelAcc::new();
 
-// static SCHEDULER: UnsafeCell<Scheduler> = unsafe { UnsafeCell::new(Scheduler::new()) };
 static SCHEDULER: Global<Scheduler> = unsafe { Global::new(Scheduler::new()) };
 
 #[inline(never)]

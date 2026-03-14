@@ -4,7 +4,11 @@ use core::{
     ptr,
 };
 
-use crate::{SCHEDULER, kernel::isr::InterruptHandlerData, scheduler_entrypoint};
+use crate::{
+    SCHEDULER,
+    kernel::{isr::InterruptHandlerData, platform::i386::tss::TSS},
+    scheduler_entrypoint,
+};
 
 /// Stores all information about a process.
 /// repr(C) is necessary because we need to compute a consistent offset.
@@ -126,23 +130,34 @@ pub unsafe extern "C" fn exit_thread(scheduler_ctx: *const ProcessCtrlBlock) -> 
     )
 }
 
+pub unsafe fn switch_to_user_mode(to_ctx: &ProcessCtrlBlock, tss: &mut TSS) -> ! {
+    unsafe {
+        asm!("mov {esp0}, esp", esp0 = out(reg) tss.esp0);
+        enter_user_mode(to_ctx.prog_ctr, to_ctx.stack_base_ptr)
+    }
+}
+
+/// Enter user mode by using the `iret` trick. This function continues
+/// executing from `entry_point`. It is paramount that this function does not
+/// leave breadcrumbs on the stack.
 #[unsafe(naked)]
-pub unsafe extern "C" fn enter_user_mode(entry_point: usize) -> ! {
+unsafe extern "C" fn enter_user_mode(entry_point: usize, stack_base_ptr: usize) -> ! {
     naked_asm!(
         "pop eax", // Pop original return address. `eax` will be overwritten.
-        "pop edx", // Pop argument
+        "pop ecx", // Pop argument 2
+        "pop edx", // Pop argument 1
         "mov ax, (4 * 8) | 3",
         "mov ds, ax",
         "mov es, ax",
         "mov fs, ax",
         "mov gs, ax",
         // Prepare `iret` stack frame
-        "mov eax, 0x23",
-        "mov ecx, 0x1b",
-        "push eax",
-        "push 0x7ffff",
-        "pushfd",
-        "push ecx",
+        "mov eax, (4 * 8) | 3",
+        "push eax", // SS
+        "push ecx", // Stack pointer
+        "pushfd",   // Flags
+        "mov eax, (3 * 8) | 3",
+        "push eax", // CS
         "push edx", // continue execution from input argument entrypoint.
         "iretd",    // Compiles to `iret`. Putting `iret` here compiles to `iretw`.
     );

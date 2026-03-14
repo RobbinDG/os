@@ -2,11 +2,6 @@ use core::arch::asm;
 
 use crate::kernel::platform::i386::tss::TSS;
 
-
-unsafe extern "C" {
-    fn setGdt(limit: u32, base: u32, offset: u32);
-}
-
 #[repr(C, packed)]
 #[derive(Default)]
 pub struct GDTR {
@@ -50,14 +45,15 @@ impl GDTR {
     /// Returns `None` if the GDTR is not loaded or the index is out of range.
     pub fn entry_raw(&self, i: usize) -> Option<&CompiledGDTEntry> {
         if self.offset == 0 {
-            return None
+            return None;
         }
         if (i + 1) * core::mem::size_of::<CompiledGDTEntry>() - 1 <= self.size as usize {
-            let addr = (self.offset as usize + i * core::mem::size_of::<CompiledGDTEntry>()) as *const CompiledGDTEntry;
-            Some(unsafe { &*addr })            
+            let addr = (self.offset as usize + i * core::mem::size_of::<CompiledGDTEntry>())
+                as *const CompiledGDTEntry;
+            Some(unsafe { &*addr })
         } else {
             None
-        }        
+        }
     }
 
     /// Returns a decoded GDT entry at a given index, referenced by this GDTR.
@@ -142,4 +138,3 @@ impl GDTEntry {
         buf
     }
 }
-

@@ -1,6 +1,6 @@
 use core::ptr;
 
-use crate::kernel::platform::i386::context_switch::{ProcessCtrlBlock, enter_user_mode};
+use crate::{KERNEL, kernel::platform::i386::context_switch::{ProcessCtrlBlock, switch_to_user_mode}};
 
 pub struct Scheduler {
     root: ProcessCtrlBlock,
@@ -51,7 +51,10 @@ impl Scheduler {
     pub fn run_process(&mut self, process: &mut ProcessCtrlBlock) {
         unsafe {
             self.set_current_process(process);
-            enter_user_mode(process.prog_ctr)
+            if let Ok(kernel) = KERNEL.get() {
+                kernel.tss
+            }
+            switch_to_user_mode(process, KERNEL.get())
         }
     }
 }

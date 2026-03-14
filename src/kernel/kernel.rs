@@ -103,7 +103,7 @@ impl Kernel {
                 syscalls: SysCalls::new(),
             };
 
-            kernel.tss.init(0x90000, 0x8, 0x10);
+            kernel.tss.init(0x90000, 0x10);
             kernel.load_tss();
             Ok(kernel)
         }

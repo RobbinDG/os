@@ -1,5 +1,3 @@
-use crate::kernel::platform::i386::gdt::{GDTEntry, GDTR};
-
 #[repr(C, packed)]
 #[derive(Default)]
 pub struct TSS {
@@ -49,7 +47,7 @@ impl TSS {
         Default::default()
     }
 
-    pub fn init(&mut self, esp0: u32, code_segment: u16, data_segment: u16) {
+    pub fn init(&mut self, esp0: u32, data_segment: u16) {
         self.esp0 = esp0;
         self.ss0 = data_segment;
         self.iopb = core::mem::size_of::<TSS>() as u16;
