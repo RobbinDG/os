@@ -1,20 +1,19 @@
 use crate::kernel::{kernel::KernelError, mem::MemoryManager};
 
-pub struct DynArray<'a, T>
+pub struct DynArray<T>
 where
     T: Sized,
 {
     start: *mut T,
     size: usize,
-    mem: &'a spin::Mutex<MemoryManager>,
 }
 
-impl<'a, T: Sized> DynArray<'a, T> {
-    pub unsafe fn new(count: usize, align: bool, mem: &'a spin::Mutex<MemoryManager>) -> Self {
+impl<'a, T: Sized> DynArray<T> {
+    pub unsafe fn new(count: usize, align: bool, mem: &'a mut MemoryManager) -> Self {
         unsafe {
             let size = core::mem::size_of::<T>() * count;
-            let start = mem.lock().malloc(size, align) as *mut T;
-            Self { start, size, mem }
+            let start = mem.malloc(size, align) as *mut T;
+            Self { start, size }
         }
     }
 

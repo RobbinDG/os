@@ -9,18 +9,17 @@ pub trait DecimalDigits {
 }
 
 pub trait DecimalPrintable {
-    unsafe fn as_decimal<'a>(&'a self) -> Result<DynArray<'a, u8>, KernelError>;
+    unsafe fn as_decimal<'a>(&'a self) -> Result<DynArray<u8>, KernelError>;
 }
 
 impl<T> DecimalPrintable for T
 where
     T: Div<T, Output = T> + Rem<T, Output = T> + Eq + Copy + From<u8> + DecimalDigits,
 {
-    unsafe fn as_decimal<'a>(&'a self) -> Result<DynArray<'a, u8>, KernelError> {
+    unsafe fn as_decimal<'a>(&'a self) -> Result<DynArray<u8>, KernelError> {
         unsafe {
             let byte_count = Self::decimal_digits();
-            let mem = KERNEL.get()?.memory_manager();
-            let mut chars = DynArray::new(byte_count, false, mem);
+            let mut chars = KERNEL.mem.with(|mem| DynArray::new(byte_count, false, mem));
             let mut remainder = *self;
             let ten = T::from(10);
             let zero = T::from(0);

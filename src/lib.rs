@@ -32,14 +32,18 @@ use core::arch::asm;
 
 use crate::{
     kernel::{
-        acpi::acpi::ACPI, global::Global, isr::empty_event_buffer, kernel::KernelAcc,
-        platform::i386::context_switch::ProcessCtrlBlock, scheduler::Scheduler,
+        acpi::acpi::ACPI,
+        global::{Global, GlobalLazy},
+        isr::empty_event_buffer,
+        kernel::Kernel,
+        platform::i386::context_switch::ProcessCtrlBlock,
+        scheduler::Scheduler,
     },
     printer::VGATextWriter,
     shell::Shell,
 };
 
-static KERNEL: KernelAcc = KernelAcc::new();
+static KERNEL: Kernel = Kernel::new();
 
 static SCHEDULER: Global<Scheduler> = unsafe { Global::new(Scheduler::new()) };
 
@@ -47,9 +51,11 @@ static SCHEDULER: Global<Scheduler> = unsafe { Global::new(Scheduler::new()) };
 pub unsafe extern "C" fn scheduler_entrypoint() -> ! {
     loop {
         let mut process = ProcessCtrlBlock::new_process(0x7FFFF, sample_process);
-        SCHEDULER.with(|s| {
-            s.run_process(&mut process);
-        });
+        unsafe {
+            SCHEDULER.with::<()>(|s| {
+                s.run_process(&mut process);
+            })
+        };
     }
 }
 
@@ -116,41 +122,40 @@ pub extern "C" fn kernel_main() -> ! {
     unsafe {
         KERNEL.init();
 
-        if let Ok(kernel) = KERNEL.get() {
-            let mut vga = kernel.vga_driver().lock();
-            if let Some(mut tty) = VGATextWriter::get_instance(&mut vga) {
-                match ACPI::load() {
-                    Some(acpi) => {
-                        let mut iter = acpi.iter();
-                        while let Some(header) = iter.next() {
-                            tty.println_ascii(&header.signature)
-                        }
-                    }
-                    None => tty.println_ascii("No RDSP".as_bytes()),
-                }
-                let mut shell = Shell::new(tty);
-                scheduler_entrypoint();
-                loop {
-                    asm!("hlt");
-                    let event_buf = empty_event_buffer();
-                    for i in 0..event_buf.len() {
-                        if let Some(Some(event)) = event_buf.get(i) {
-                            match event {
-                                sys_event::SysEvent::Keyboard => {
-                                    if let Some(key) =
-                                        kernel.keyboard_driver().lock().keyboard_interrupt_handler()
-                                    {
-                                        shell.handle_key(key);
-                                    }
-                                }
-                            }
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        scheduler_entrypoint();
+        // let mut vga = KERNEL.vga_driver().lock();
+        // if let Some(mut tty) = VGATextWriter::get_instance(&mut vga) {
+        //     match ACPI::load() {
+        //         Some(acpi) => {
+        //             let mut iter = acpi.iter();
+        //             while let Some(header) = iter.next() {
+        //                 tty.println_ascii(&header.signature)
+        //             }
+        //         }
+        //         None => tty.println_ascii("No RDSP".as_bytes()),
+        //     }
+        //     let mut shell = Shell::new(tty);
+        //     loop {
+        //         asm!("hlt");
+        //         let event_buf = empty_event_buffer();
+        //         for i in 0..event_buf.len() {
+        //             if let Some(Some(event)) = event_buf.get(i) {
+        //                 match event {
+        //                     sys_event::SysEvent::Keyboard => {
+        //                         if let Some(key) =
+        //                             kernel.keyboard_driver().lock().keyboard_interrupt_handler()
+        //                         {
+        //                             shell.handle_key(key);
+        //                         }
+        //                     }
+        //                 }
+        //             } else {
+        //                 break;
+        //             }
+        //         }
+        //     }
+        // }
+
         loop {}
     }
 }

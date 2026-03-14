@@ -9,13 +9,12 @@ pub trait HexPrintable {
 
     unsafe fn convert_to_bytes(&self, buf: &mut DynArray<u8>) -> Result<(), KernelError>;
 
-    unsafe fn as_hex<'a>(&'a self) -> Result<DynArray<'a, u8>, KernelError> {
+    unsafe fn as_hex<'a>(&'a self) -> Result<DynArray<u8>, KernelError> {
         unsafe {
             let byte_count = core::mem::size_of::<Self::Item>();
-            let mem = KERNEL.get()?.memory_manager();
-            let mut buf = DynArray::new(byte_count, false, mem);
+            let mut buf = KERNEL.mem.with(|mem| DynArray::new(byte_count, false, mem));
             self.convert_to_bytes(&mut buf)?;
-            let mut hex_chars = DynArray::new(byte_count * 2, false, mem);
+            let mut hex_chars= KERNEL.mem.with(|mem| DynArray::new(byte_count * 2, false, mem));
             for i in 0..byte_count {
                 let byte = buf.get(i)?;
                 hex_chars.set(i * 2, Self::half_byte_to_hex_ascii(byte >> 4))?;

@@ -43,20 +43,53 @@ pub struct TSS {
 }
 
 impl TSS {
-    pub fn new() -> Self {
-        Default::default()
+    pub const fn new() -> Self {
+        Self {
+            _link: 0,
+            _reserved0: 0,
+            esp0: 0,
+            ss0: 0,
+            _reserved1: 0,
+            esp1: 0,
+            ss1: 0,
+            _reserved2: 0,
+            esp2: 0,
+            ss2: 0,
+            _reserved3: 0,
+            _cr3: 0,
+            _eip: 0,
+            _eflags: 0,
+            _eax: 0,
+            _ecx: 0,
+            _edx: 0,
+            _ebx: 0,
+            _esp: 0,
+            _ebp: 0,
+            _esi: 0,
+            _edi: 0,
+            es: 0,
+            _es_reserved: 0,
+            cs: 0,
+            _cs_reserved: 0,
+            ss: 0,
+            _ss_reserved: 0,
+            ds: 0,
+            _ds_reserved: 0,
+            fs: 0,
+            _fs_reserved: 0,
+            gs: 0,
+            _gs_reserved: 0,
+            _ldtr: 0,
+            _ldtr_reserved: 0,
+            _iopb_reserved: 0,
+            iopb: 0,
+            _ssp: 0,
+        }
     }
 
     pub fn init(&mut self, esp0: u32, data_segment: u16) {
         self.esp0 = esp0;
         self.ss0 = data_segment;
         self.iopb = core::mem::size_of::<TSS>() as u16;
-        // We allow access to the TSS segments from ring 3 and below.
-        // self.cs = code_segment | 0x3;
-        // self.ss = data_segment | 0x3;
-        // self.ds = data_segment | 0x3;
-        // self.es = data_segment | 0x3;
-        // self.fs = data_segment | 0x3;
-        // self.gs = data_segment | 0x3;
     }
 }

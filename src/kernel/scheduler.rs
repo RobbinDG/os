@@ -48,13 +48,10 @@ impl Scheduler {
         &mut self.root
     }
 
-    pub fn run_process(&mut self, process: &mut ProcessCtrlBlock) {
+    pub fn run_process(&mut self, process: &mut ProcessCtrlBlock) -> ! {
         unsafe {
             self.set_current_process(process);
-            if let Ok(kernel) = KERNEL.get() {
-                kernel.tss
-            }
-            switch_to_user_mode(process, KERNEL.get())
+            switch_to_user_mode(process, &mut *KERNEL.tss.ptr())
         }
     }
 }

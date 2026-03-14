@@ -20,7 +20,7 @@ const fn make_command(command_str: &str) -> [u8; BUF_SIZE] {
 
     let mut out: [u8; BUF_SIZE] = [0u8; BUF_SIZE];
     let mut i = 0;
-    while i < bytes.len() {    
+    while i < bytes.len() {
         out[i] = bytes[i];
         i += 1;
     }
@@ -75,7 +75,7 @@ impl<'a> Shell<'a> {
                 if cmd_str[i] == b'\0' {
                     unsafe {
                         match cmd_func {
-                            Command::Empty => {},
+                            Command::Empty => {}
                             Command::PS2 => ps2_cli(&mut self.tty),
                             Command::Commands => self.print_cmd_options(),
                             Command::Mem => self.print_mem(),
@@ -112,30 +112,26 @@ impl<'a> Shell<'a> {
 
     unsafe fn print_mem(&mut self) {
         unsafe {
-            match KERNEL.get() {
-                Ok(k) => {
-                    let mem = k.memory_manager().lock().get_memory();
-
-                    self.tty.print_ascii("Low mem size: ".as_bytes());
-                    self.tty.print_decimal(mem.low_mem_size);
-                    self.tty.println_ascii(" kb".as_bytes());
-                    self.tty.nl();
-                    for hm in mem.high_mem {
-                        match hm {
-                            Some(entry) => {
-                                self.tty.print_hex(entry.base);
-                                self.tty.print_ascii(" - ".as_bytes());
-                                self.tty.print_hex(entry.len);
-                                self.tty.print_ascii(" - ".as_bytes());
-                                self.tty.print_hex::<u8>((&entry.typ).into());
-                                self.tty.nl();
-                            }
-                            None => return,
+            KERNEL.mem.with(|mem_mgr| {
+                let mem = mem_mgr.get_memory();
+                self.tty.print_ascii("Low mem size: ".as_bytes());
+                self.tty.print_decimal(mem.low_mem_size);
+                self.tty.println_ascii(" kb".as_bytes());
+                self.tty.nl();
+                for hm in mem.high_mem {
+                    match hm {
+                        Some(entry) => {
+                            self.tty.print_hex(entry.base);
+                            self.tty.print_ascii(" - ".as_bytes());
+                            self.tty.print_hex(entry.len);
+                            self.tty.print_ascii(" - ".as_bytes());
+                            self.tty.print_hex::<u8>((&entry.typ).into());
+                            self.tty.nl();
                         }
+                        None => return,
                     }
                 }
-                Err(_) => self.tty.println_ascii("Kernel Error.".as_bytes()),
-            }
+            });
         }
     }
 }

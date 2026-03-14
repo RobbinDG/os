@@ -144,8 +144,8 @@ pub unsafe fn switch_to_user_mode(to_ctx: &ProcessCtrlBlock, tss: &mut TSS) -> !
 unsafe extern "C" fn enter_user_mode(entry_point: usize, stack_base_ptr: usize) -> ! {
     naked_asm!(
         "pop eax", // Pop original return address. `eax` will be overwritten.
-        "pop ecx", // Pop argument 2
         "pop edx", // Pop argument 1
+        "pop ecx", // Pop argument 2
         "mov ax, (4 * 8) | 3",
         "mov ds, ax",
         "mov es, ax",

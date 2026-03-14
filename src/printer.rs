@@ -119,7 +119,7 @@ impl<'a> VGATextWriter<'a> {
         }
     }
 
-    unsafe fn print_char_buffer<'b>(&mut self, buf: DynArray<'b, u8>) {
+    unsafe fn print_char_buffer<'b>(&mut self, buf: DynArray<u8>) {
         unsafe {
             for i in 0..buf.len() {
                 match buf.get(i) {

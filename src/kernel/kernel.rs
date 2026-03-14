@@ -1,9 +1,8 @@
 use core::arch::asm;
 
-use once_cell_no_std::OnceCell;
-
 use crate::{
     kernel::{
+        global::{Global, GlobalLazy},
         isr::set_isr,
         keyboard_driver::KeyboardDriver,
         mem::MemoryManager,
@@ -17,53 +16,40 @@ use crate::{
     printer::VGATextWriter,
 };
 
+const GDT_SIZE: usize = 6;
+
 pub enum KernelError {
     NotReady,
     OutOfBounds,
     Busy,
 }
 
-pub struct KernelAcc {
-    inner: OnceCell<Kernel>,
-}
-
-impl KernelAcc {
-    pub const fn new() -> Self {
-        Self {
-            inner: OnceCell::new(),
-        }
-    }
-
-    /// Initialise the kernel. If, somehow, this fails, we loop forever so
-    /// it can be easily debugged by GDB.
-    pub unsafe fn init(&self) {
-        if let Ok(kernel) = unsafe { Kernel::new() } {
-            if let Err(_) = self.inner.set(kernel) {
-                loop {}
-            }
-            return;
-        }
-        loop {}
-    }
-
-    pub fn get(&self) -> Result<&Kernel, KernelError> {
-        self.inner.get().ok_or(KernelError::NotReady)
-    }
-}
-
 pub struct Kernel {
+    //--- GLOBAL STATE ---
     /// The GDT needs a static memory location native to the kernel, so
     /// we store it as a field. Note that the entries need to be in compiled form.
-    gdt: [CompiledGDTEntry; 6],
-    tss: TSS,
-    mem: spin::Mutex<MemoryManager>,
-    keyboard_driver: spin::Mutex<KeyboardDriver>,
-    vga_driver: spin::Mutex<VGAText>,
+    gdt: Global<[CompiledGDTEntry; GDT_SIZE]>,
+    pub tss: Global<TSS>,
+    //--- SERVICES ---
+    pub mem: GlobalLazy<MemoryManager>,
+    pub keyboard_driver: GlobalLazy<KeyboardDriver>,
+    pub vga_driver: GlobalLazy<VGAText>,
     syscalls: SysCalls,
 }
 
 impl Kernel {
-    pub unsafe fn new() -> Result<Self, ()> {
+    pub const fn new() -> Self {
+        Self {
+            gdt: Global::new([[0; 8]; GDT_SIZE]),
+            tss: Global::new(TSS::new()),
+            mem: GlobalLazy::empty(),
+            keyboard_driver: GlobalLazy::empty(),
+            vga_driver: GlobalLazy::empty(),
+            syscalls: SysCalls {},
+        }
+    }
+
+    pub unsafe fn init(&self) -> Result<(), ()> {
         unsafe {
             // Setup interrupt handling
             set_isr();
@@ -94,34 +80,17 @@ impl Kernel {
             drop(tty);
 
             // All state ready.
-            let mut kernel = Self {
-                gdt: Default::default(),
-                tss: TSS::new(),
-                mem: spin::Mutex::new(mem),
-                keyboard_driver: spin::Mutex::new(keyboard_drv),
-                vga_driver: spin::Mutex::new(vga_drv),
-                syscalls: SysCalls::new(),
-            };
+            self.mem.init(mem);
+            self.keyboard_driver.init(keyboard_drv);
+            self.vga_driver.init(vga_drv);
 
-            kernel.tss.init(0x90000, 0x10);
-            kernel.load_tss();
-            Ok(kernel)
+            self.tss.with(|tss| tss.init(0x90000, 0x10));
+            self.load_tss();
+            Ok(())
         }
     }
 
-    pub fn memory_manager(&self) -> &spin::Mutex<MemoryManager> {
-        &self.mem
-    }
-
-    pub fn vga_driver(&self) -> &spin::Mutex<VGAText> {
-        &self.vga_driver
-    }
-
-    pub fn keyboard_driver(&self) -> &spin::Mutex<KeyboardDriver> {
-        &self.keyboard_driver
-    }
-
-    unsafe fn load_tss(&mut self) {
+    unsafe fn load_tss(&self) {
         unsafe {
             let tr_idx = self.append_tr_to_gdt() as u16;
             asm!(
@@ -133,23 +102,29 @@ impl Kernel {
     }
 
     #[inline]
-    unsafe fn append_tr_to_gdt(&mut self) -> usize {
+    unsafe fn append_tr_to_gdt(&self) -> usize {
         unsafe { asm!("cli") }
         let mut gdtr = GDTR::default();
         gdtr.load();
 
-        if let Some(e) = gdtr.entry_raw(1) {
-            self.gdt[1] = e.clone();
-        }
-        if let Some(e) = gdtr.entry_raw(2) {
-            self.gdt[2] = e.clone();
-        }
+        let tss_ptr = unsafe { self.tss.ptr() };
 
-        self.gdt[3] = GDTEntry::new(true).encode();
-        self.gdt[4] = GDTEntry::new(false).encode();
+        unsafe {
+            self.gdt.with(|gdt| {
+                if let Some(e) = gdtr.entry_raw(1) {
+                    gdt[1] = e.clone();
+                }
+                if let Some(e) = gdtr.entry_raw(2) {
+                    gdt[2] = e.clone();
+                }
 
-        self.gdt[5] = GDTEntry::for_task_state_segment(&self.tss).encode();
-        let new_gdtr = GDTR::for_gdt(&self.gdt);
+                gdt[3] = GDTEntry::new(true).encode();
+                gdt[4] = GDTEntry::new(false).encode();
+
+                gdt[5] = GDTEntry::for_task_state_segment(&*tss_ptr).encode();
+            })
+        };
+        let new_gdtr = GDTR::for_gdt(unsafe { &*self.gdt.ptr() });
         new_gdtr.store();
         unsafe { asm!("sti") }
         5 * core::mem::size_of::<CompiledGDTEntry>()
