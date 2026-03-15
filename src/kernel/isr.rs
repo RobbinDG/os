@@ -1,12 +1,10 @@
 use core::{arch::asm, hint::black_box};
 
 use crate::{
-    SCHEDULER,
     kernel::{
         idt::{IDTGate, IDTReg},
         interrupt_handlers::INTERRUPT_HANDLERS,
         pic::PIC,
-        platform::i386::context_switch::{ProcessCtrlBlock, switch_context},
     },
     sys_event::SysEvent,
 };
@@ -67,26 +65,6 @@ const ISR_EXCEPTION_MSGS: [&str; 32] = [
     "Reserved",
 ];
 
-pub unsafe extern "C" fn isr_common_stub_inner(data: InterruptHandlerData) {
-    unsafe {
-        asm!("push eax");
-        let (cur, new) = SCHEDULER.with(|s| {
-            let cur = s.current_process_mut() as *mut ProcessCtrlBlock;
-            let new = {
-                let new = s.scheduler_process_mut();
-                new.set_entry(isr_handler as *const () as usize);
-                // TODO is there any reason to believe that this pointer will be valid whilst handling the interrupt?
-                new.set_interrupt(&data);
-                new as *mut ProcessCtrlBlock
-            };
-            s.set_current_process(new);
-            (cur, new)
-        });
-        asm!("pop eax");
-        switch_context(cur, new);
-    }
-}
-
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn isr_common_stub() {
     unsafe {
@@ -99,7 +77,15 @@ pub unsafe extern "C" fn isr_common_stub() {
             "mov es, ax",
             "mov fs, ax",
             "mov gs, ax",
+            // Push a pointer to the sturcture created right before as argument to the isr_handler.
+            // In principe, just calling the function instead and passing the argument by value works.
+            // However, the compiler figures out that the value gets discarded at the end of the function,
+            // and optimizes away every operation on it.
+            // TODO Until I find a better way to let the compiler know that the value is, in fact, not
+            // being discarded, I will pass a reference/pointer instead. Only takes 2 extra instuctions anyway.
+            "push esp",
             "call {inner}",
+            "pop esp",
             "pop eax",
             "mov ds, ax",
             "mov es, ax",
@@ -195,7 +181,7 @@ pub struct Registers {
     pub eax: u32,
 }
 
-/// Pushed during `int` call
+/// Pushed during `int` call.
 #[repr(C, packed)]
 #[derive(Default)]
 pub struct IntData {
@@ -209,11 +195,12 @@ pub struct IntData {
 #[repr(C, packed)]
 #[derive(Default)]
 pub struct InterruptHandlerData {
-    // Pushed during isr_common_stub
+    /// Pushed during isr_common_stub
     pub ds: u32,
-    // Result of `pusha`.
+    /// Result of `pusha`. Will be popped off the stack on return to user mode, so return values
+    /// can be inserted here.
     pub reg: Registers,
-    // Manually pushed during ISR/IRQ hander in ASM
+    // Manually pushed during ISR/IRQ hander in ASM.
     pub int_no: u32,
     pub err_code: u32, // Optional for built-in ISRs, so sometimes manually pushed
 
@@ -222,12 +209,11 @@ pub struct InterruptHandlerData {
 
 #[unsafe(no_mangle)]
 #[inline(never)]
-unsafe extern "C" fn isr_handler(regs: InterruptHandlerData) {
+unsafe extern "C" fn isr_handler(regs: &mut InterruptHandlerData) {
     unsafe {
         if regs.int_no & 0xFF == 0x80 {
             black_box(syscall(regs));
         }
-        // LAST_INTERRUPT = regs.int_no;
     }
 }
 
@@ -261,8 +247,8 @@ pub unsafe fn empty_event_buffer() -> [Option<SysEvent>; EVENT_BUF_SIZE] {
 }
 
 #[inline(never)]
-pub unsafe fn syscall(regs: InterruptHandlerData) {
-    unsafe { asm!("mov eax, 0") }
+pub unsafe fn syscall(data: &mut InterruptHandlerData) {
+    data.reg.eax = 0x420;
 }
 
 unsafe extern "C" {

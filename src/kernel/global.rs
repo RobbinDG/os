@@ -1,10 +1,5 @@
 use core::{cell::UnsafeCell, panic};
 
-mod sealed {
-    pub trait NotNever {}
-    impl<T> NotNever for T {}
-}
-
 /// Helper structure for mutable global state. It internally manages
 /// an `UnsafeCell`. Although the way the state is exposes promotes safe
 /// usage of the internal data, no guarantees can be made as any function can be passed.
