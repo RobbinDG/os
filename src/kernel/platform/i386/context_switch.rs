@@ -6,7 +6,7 @@ use core::{
 
 use crate::{
     SCHEDULER,
-    kernel::{isr::InterruptHandlerData, platform::i386::tss::TSS},
+    kernel::platform::i386::{interrupt::data::InterruptHandlerData, tss::TSS},
     scheduler_entrypoint,
 };
 

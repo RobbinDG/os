@@ -1,4 +1,4 @@
-use crate::kernel::isr::InterruptHandlerData;
+use crate::kernel::platform::i386::interrupt::data::InterruptHandlerData;
 
 pub enum SysCall {
     Unknown = 0,

@@ -3,12 +3,10 @@ use core::arch::asm;
 use crate::{
     kernel::{
         global::{Global, GlobalLazy},
-        isr::set_isr,
         keyboard_driver::KeyboardDriver,
         mem::MemoryManager,
         platform::i386::{
-            gdt::{CompiledGDTEntry, GDTEntry, GDTR},
-            tss::TSS,
+            gdt::{CompiledGDTEntry, GDTEntry, GDTR}, interrupt::idt::setup_idt, tss::TSS
         },
         syscalls::SysCalls,
         vga_driver::VGAText,
@@ -52,7 +50,7 @@ impl Kernel {
     pub unsafe fn init(&self) -> Result<(), ()> {
         unsafe {
             // Setup interrupt handling
-            set_isr();
+            setup_idt();
 
             // Create kernel components
             let mem = MemoryManager::init();

@@ -34,7 +34,7 @@ use crate::{
     kernel::{
         acpi::acpi::ACPI,
         global::{Global, GlobalLazy},
-        isr::empty_event_buffer,
+        event_buf::empty_event_buffer,
         kernel::Kernel,
         platform::i386::context_switch::ProcessCtrlBlock,
         scheduler::Scheduler,
