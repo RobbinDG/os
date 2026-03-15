@@ -33,13 +33,14 @@ use core::arch::asm;
 use crate::{
     kernel::{
         acpi::acpi::ACPI,
-        global::{Global, GlobalLazy},
         event_buf::empty_event_buffer,
+        global::{Global, GlobalLazy},
         kernel::Kernel,
         platform::i386::context_switch::ProcessCtrlBlock,
         scheduler::Scheduler,
     },
     printer::VGATextWriter,
+    programs::lib::syscall_write,
     shell::Shell,
 };
 
@@ -112,9 +113,8 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     */
 #[inline(never)]
 fn sample_process() {
-    unsafe {
-        asm!("mov eax, 69h", "int 80h");
-    }
+    let buf = [b'A'];
+    syscall_write(&buf, buf.len());
 }
 
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.

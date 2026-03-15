@@ -1,4 +1,4 @@
-use crate::kernel::platform::i386::interrupt::data::InterruptHandlerData;
+use crate::{KERNEL, kernel::platform::i386::interrupt::data::InterruptHandlerData};
 
 pub enum SysCall {
     Unknown = 0,
@@ -19,26 +19,24 @@ impl SysCall {
             }
         }
     }
-}
-
-pub struct SysCalls {}
-
-impl SysCalls {
-    pub const fn new() -> Self {
-        Self {}
-    }
 
     #[inline]
-    pub unsafe fn call(data: InterruptHandlerData) {
+    pub unsafe fn call(&self, data: &mut InterruptHandlerData) {
         unsafe {
-            match SysCall::transmute_u32(data.reg.eax) {
+            match self {
                 SysCall::Unknown => {}
-                SysCall::Write => {}
-                SysCall::Read => Self::write(data),
+                SysCall::Write => Self::write(data),
+                SysCall::Read => {}
                 SysCall::_LastDummy => {}
             }
         }
     }
 
-    pub unsafe fn write(regs: InterruptHandlerData) {}
+    unsafe fn write(regs: &mut InterruptHandlerData) {
+        unsafe {
+            KERNEL.vga_driver.with(|vga| {
+                vga.put_char_raw(*(regs.reg.ecx as *const u8) as u8, 0, 0);
+            })
+        }
+    }
 }
