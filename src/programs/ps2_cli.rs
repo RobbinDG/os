@@ -1,4 +1,4 @@
-use crate::printer::VGATextWriter;
+use crate::console::VGATextWriter;
 
 pub unsafe fn ps2_cli(tty: &mut VGATextWriter) {
     unsafe {

@@ -1,4 +1,4 @@
-use crate::{KERNEL, printer::VGATextWriter, programs::ps2_cli::ps2_cli, static_str::StaticString};
+use crate::{KERNEL, console::VGATextWriter, programs::ps2_cli::ps2_cli, static_str::StaticString};
 
 const BUF_SIZE: usize = 32;
 

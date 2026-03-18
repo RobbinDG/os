@@ -11,7 +11,7 @@ use crate::{
         syscalls::SysCalls,
         vga_driver::VGAText,
     },
-    printer::VGATextWriter,
+    console::VGATextWriter,
 };
 
 const GDT_SIZE: usize = 6;

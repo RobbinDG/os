@@ -20,7 +20,7 @@ mod decimal_printable;
 mod dyn_array;
 mod hex_printable;
 mod kernel;
-mod printer;
+mod console;
 mod programs;
 mod shell;
 mod static_str;
@@ -39,7 +39,7 @@ use crate::{
         platform::i386::context_switch::ProcessCtrlBlock,
         scheduler::Scheduler,
     },
-    printer::VGATextWriter,
+    console::VGATextWriter,
     programs::lib::syscall_write,
     shell::Shell,
 };
