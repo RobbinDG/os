@@ -31,17 +31,14 @@ mod vga;
 use core::arch::asm;
 
 use crate::{
-    kernel::{
+    console::Console, kernel::{
         acpi::acpi::ACPI,
         event_buf::empty_event_buffer,
         global::{Global, GlobalLazy},
         kernel::Kernel,
         platform::i386::context_switch::ProcessCtrlBlock,
         scheduler::Scheduler,
-    },
-    console::VGATextWriter,
-    programs::lib::syscall_write,
-    shell::Shell,
+    }, programs::{lib::syscall_write, run_shell::run_shell}, shell::Shell
 };
 
 static KERNEL: Kernel = Kernel::new();
@@ -51,7 +48,7 @@ static SCHEDULER: Global<Scheduler> = unsafe { Global::new(Scheduler::new()) };
 #[inline(never)]
 pub unsafe extern "C" fn scheduler_entrypoint() -> ! {
     loop {
-        let mut process = ProcessCtrlBlock::new_process(0x7FFFF, sample_process);
+        let mut process = ProcessCtrlBlock::new_process(0x7FFFF, run_shell);
         unsafe {
             SCHEDULER.with::<()>(|s| {
                 s.run_process(&mut process);
@@ -116,6 +113,7 @@ fn sample_process() {
     let buf = [b'A'];
     syscall_write(&buf, buf.len());
 }
+
 
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {

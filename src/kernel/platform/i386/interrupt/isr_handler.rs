@@ -9,7 +9,14 @@ use crate::kernel::platform::i386::{
 unsafe extern "C" fn isr_handler(regs: &mut InterruptHandlerData) {
     unsafe {
         if regs.int_no & 0xFF == 0x80 {
-            black_box(syscall(regs));
+            black_box({
+                let ret_val = syscall(regs);
+                asm!(
+                    "mov eax, {val}",
+                    val = in(reg) ret_val,
+                )
+            }
+            );
         }
     }
 }

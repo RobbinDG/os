@@ -1,17 +1,16 @@
 use core::arch::asm;
 
-use crate::{
-    kernel::{
-        global::{Global, GlobalLazy},
-        keyboard_driver::KeyboardDriver,
-        mem::MemoryManager,
-        platform::i386::{
-            gdt::{CompiledGDTEntry, GDTEntry, GDTR}, interrupt::idt::setup_idt, tss::TSS
-        },
-        syscalls::SysCalls,
-        vga_driver::VGAText,
+use crate::kernel::{
+    global::{Global, GlobalLazy},
+    keyboard_driver::KeyboardDriver,
+    mem::MemoryManager,
+    platform::i386::{
+        gdt::{CompiledGDTEntry, GDTEntry, GDTR},
+        interrupt::idt::setup_idt,
+        tss::TSS,
     },
-    console::VGATextWriter,
+    tty::TTY,
+    vga_driver::VGATextDriver,
 };
 
 const GDT_SIZE: usize = 6;
@@ -22,7 +21,7 @@ pub enum KernelError {
     Busy,
 }
 
-pub struct Kernel {
+pub struct Kernel<'a> {
     //--- GLOBAL STATE ---
     /// The GDT needs a static memory location native to the kernel, so
     /// we store it as a field. Note that the entries need to be in compiled form.
@@ -30,12 +29,12 @@ pub struct Kernel {
     pub tss: Global<TSS>,
     //--- SERVICES ---
     pub mem: GlobalLazy<MemoryManager>,
-    pub keyboard_driver: GlobalLazy<KeyboardDriver>,
-    pub vga_driver: GlobalLazy<VGAText>,
-    syscalls: SysCalls,
+    pub keyboard_driver: GlobalLazy<KeyboardDriver<'a>>,
+    pub vga_driver: GlobalLazy<VGATextDriver>,
+    pub tmp_tty: GlobalLazy<TTY<u8>>,
 }
 
-impl Kernel {
+impl<'a> Kernel<'a> {
     pub const fn new() -> Self {
         Self {
             gdt: Global::new([[0; 8]; GDT_SIZE]),
@@ -43,7 +42,7 @@ impl Kernel {
             mem: GlobalLazy::empty(),
             keyboard_driver: GlobalLazy::empty(),
             vga_driver: GlobalLazy::empty(),
-            syscalls: SysCalls {},
+            tmp_tty: GlobalLazy::empty(),
         }
     }
 
@@ -56,31 +55,23 @@ impl Kernel {
             let mem = MemoryManager::init();
 
             // Initialise drivers
-            let mut vga_drv = VGAText {};
-            let mut tty = match VGATextWriter::get_instance(&mut vga_drv) {
-                Some(tty) => tty,
-                None => return Err(()),
-            };
-
-            tty.clear();
+            self.vga_driver.init(VGATextDriver {});
 
             let keyboard_drv = match KeyboardDriver::initialise() {
                 Ok(drv) => drv,
-                Err(_) => {
-                    tty.println_ascii("Couldn't load keyboard driver.".as_bytes());
-                    loop {}
-                }
+                Err(_) => panic!(),
             };
             asm!("sti"); // Sets the enable interrupt flag.
 
+            self.tmp_tty.init(TTY::new(true));
+
             // Cleanup used references to drivers.
             // This is done to avoid adding more nesting to this process.
-            drop(tty);
+            // drop(console);
 
             // All state ready.
             self.mem.init(mem);
             self.keyboard_driver.init(keyboard_drv);
-            self.vga_driver.init(vga_drv);
 
             self.tss.with(|tss| tss.init(0x90000, 0x10));
             self.load_tss();

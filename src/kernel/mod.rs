@@ -13,3 +13,4 @@ pub mod scheduler;
 pub mod vga_driver;
 pub mod syscalls;
 pub mod global;
+pub mod tty;

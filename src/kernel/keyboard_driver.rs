@@ -1,61 +1,64 @@
-use crate::{
-    kernel::ports::{Port, read_port_byte},
-    kernel::ps2::{KeyboardInitError, identity_devices},
+use crate::kernel::{
+    ports::{Port, read_port_byte},
+    ps2::{KeyboardInitError, identity_devices},
+    tty::TTY,
 };
 
 const LOWER_CASE_OFFSET: u8 = 0x20;
 
 /// A driver for a generic PS/2 connected keyboard.
-pub struct KeyboardDriver {
+pub struct KeyboardDriver<'a> {
     b1: u8,
     b2: u8,
     shift_offset: u8,
+    input_handler: Option<&'a mut TTY<u8>>,
 }
 
-impl KeyboardDriver {
+impl<'a> KeyboardDriver<'a> {
     /// Initialise the driver by reading the PS/2 connection and
     /// identifying the device for mapping inputs.
-    pub unsafe fn initialise() -> Result<Self, KeyboardInitError> {
-        unsafe {
-            let (b1, b2) = identity_devices()?;
-            Ok(Self {
-                b1,
-                b2,
-                shift_offset: LOWER_CASE_OFFSET,
-            })
-        }
+    pub fn initialise() -> Result<Self, KeyboardInitError> {
+        let (b1, b2) = identity_devices()?;
+        Ok(Self {
+            b1,
+            b2,
+            shift_offset: LOWER_CASE_OFFSET,
+            input_handler: None,
+        })
     }
 
     /// Handle a keyboard interrupt (IRQ1). This function will
     /// read the input on the data port and parse it.
-    pub fn keyboard_interrupt_handler(&mut self) -> Option<u8> {
+    pub fn keyboard_interrupt_handler(&mut self) {
         let scan_code = read_port_byte(Port::PS2DataPort.into());
-        self.letter_from_scan_code(scan_code)
+        if let Some(input) = self.letter_from_scan_code(scan_code)
+            && let Some(handler) = &mut self.input_handler
+        {
+            handler.receive_input(input);
+        }
     }
 
     fn letter_from_scan_code(&mut self, scan_code: u8) -> Option<u8> {
         match scan_code {
             0x01 => None, // Escape
             0x00..0x02 => Some(b'X'),
-            0x02..=0x0b => Some(
-                if self.shift_offset == LOWER_CASE_OFFSET {
-                    b'0' + (scan_code - 0x02 + 1) % 10
-                } else {
-                    match scan_code {
-                        0x02 => b'!',
-                        0x03 => b'@',
-                        0x04 => b'#',
-                        0x05 => b'$',
-                        0x06 => b'%',
-                        0x07 => b'^',
-                        0x08 => b'&',
-                        0x09 => b'*',
-                        0x0a => b'(',
-                        0x0b => b')',
-                        _ => b' '
-                    }
-                }                
-            ),
+            0x02..=0x0b => Some(if self.shift_offset == LOWER_CASE_OFFSET {
+                b'0' + (scan_code - 0x02 + 1) % 10
+            } else {
+                match scan_code {
+                    0x02 => b'!',
+                    0x03 => b'@',
+                    0x04 => b'#',
+                    0x05 => b'$',
+                    0x06 => b'%',
+                    0x07 => b'^',
+                    0x08 => b'&',
+                    0x09 => b'*',
+                    0x0a => b'(',
+                    0x0b => b')',
+                    _ => b' ',
+                }
+            }),
             0x0c => Some(b'-'),
             0x0d => Some(b'='),
             0x0e => Some(0x08), // Backspace

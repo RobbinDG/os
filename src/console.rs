@@ -2,7 +2,7 @@ use crate::{
     decimal_printable::{DecimalDigits, DecimalPrintable},
     dyn_array::DynArray,
     hex_printable::HexPrintable,
-    kernel::vga_driver::{HEIGHT, VGAText, WIDTH},
+    kernel::vga_driver::{HEIGHT, VGATextDriver, WIDTH},
 };
 
 static mut X: u16 = 0;
@@ -16,23 +16,23 @@ static mut ACTIVE: bool = false;
 /// it copies this state, storing it back when dropped. This circumvents
 /// problems with mutably borrowing static mutables and follows borrowing
 /// rules.
-pub struct VGATextWriter<'a> {
+pub struct Console<'a> {
     x: u16,
     y: u16,
-    driver: &'a mut VGAText,
+    driver: &'a mut VGATextDriver,
 }
 
-impl<'a> VGATextWriter<'a> {
+impl<'a> Console<'a> {
     /// Creates a new instance using a driver. The state is not synchronized and
     /// will overwrite existing text when needed.
-    pub unsafe fn create(driver: &'a mut VGAText) -> VGATextWriter<'a> {
+    pub unsafe fn create(driver: &'a mut VGATextDriver) -> Console<'a> {
         unsafe { Self { x: X, y: Y, driver } }
     }
 
     /// Obtains an instance of the TTY, if one has not been used yet.
     /// The returned Option acts as a non-blocking lock, returning `None`
     /// when an instance is already in use.
-    pub unsafe fn get_instance(driver: &'a mut VGAText) -> Option<VGATextWriter<'a>> {
+    pub unsafe fn get_instance(driver: &'a mut VGATextDriver) -> Option<Console<'a>> {
         unsafe {
             if ACTIVE {
                 None
@@ -43,7 +43,7 @@ impl<'a> VGATextWriter<'a> {
     }
 }
 
-impl<'a> Drop for VGATextWriter<'a> {
+impl<'a> Drop for Console<'a> {
     fn drop(&mut self) {
         unsafe {
             X = self.x;
@@ -53,7 +53,7 @@ impl<'a> Drop for VGATextWriter<'a> {
     }
 }
 
-impl<'a> VGATextWriter<'a> {
+impl<'a> Console<'a> {
     pub unsafe fn clear(&mut self) {
         for i in 0..HEIGHT {
             unsafe { self.driver.clear_row(i) };

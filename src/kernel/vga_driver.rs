@@ -12,9 +12,9 @@ pub const SCREEN_SIZE: u16 = WIDTH * HEIGHT;
 pub const CHAR_SIZE: u16 = 2;
 pub const BUF_SIZE: u16 = CHAR_SIZE * SCREEN_SIZE;
 
-pub struct VGAText {}
+pub struct VGATextDriver {}
 
-impl VGAText {
+impl VGATextDriver {
     pub unsafe fn put_char_raw(&mut self, c: u8, x: u16, y: u16) {
         unsafe {
             let char_addr: *mut u8 = VIDEO_MEM.add(2 * (y * WIDTH + x) as usize);

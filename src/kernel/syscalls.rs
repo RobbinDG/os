@@ -21,21 +21,32 @@ impl SysCall {
     }
 
     #[inline]
-    pub unsafe fn call(&self, data: &mut InterruptHandlerData) {
+    pub unsafe fn call(&self, data: &mut InterruptHandlerData) -> usize {
         unsafe {
             match self {
-                SysCall::Unknown => {}
+                SysCall::Unknown => 255,
                 SysCall::Write => Self::write(data),
-                SysCall::Read => {}
-                SysCall::_LastDummy => {}
+                SysCall::Read => Self::read(data),
+                SysCall::_LastDummy => 255,
             }
         }
     }
 
-    unsafe fn write(regs: &mut InterruptHandlerData) {
+    unsafe fn write(regs: &mut InterruptHandlerData) -> usize {
         unsafe {
-            KERNEL.vga_driver.with(|vga| {
-                vga.put_char_raw(*(regs.reg.ecx as *const u8) as u8, 0, 0);
+            KERNEL
+                .tmp_tty
+                .with(|tty| tty.write(*(regs.reg.ecx as *const u8) as u8))
+        }
+    }
+
+    unsafe fn read(regs: &mut InterruptHandlerData) -> usize {
+        unsafe {
+            KERNEL.tmp_tty.with(|tty| {
+                tty.read(
+                    core::slice::from_raw_parts_mut(regs.reg.ecx as *mut u8, regs.reg.edx as usize),
+                    regs.reg.edx as usize,
+                )
             })
         }
     }

@@ -1,6 +1,6 @@
 use crate::{
     kernel::ports::{Port, read_port_byte, write_port_byte},
-    console::VGATextWriter,
+    console::Console,
     util::read_bit_mask,
 };
 
