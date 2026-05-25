@@ -1,6 +1,6 @@
 use crate::kernel::{
     ports::{Port, read_port_byte},
-    ps2::{KeyboardInitError, identity_devices},
+    ps2::{KeyboardError, identify_devices, init_ps2},
     tty::TTY,
 };
 
@@ -17,8 +17,9 @@ pub struct KeyboardDriver<'a> {
 impl<'a> KeyboardDriver<'a> {
     /// Initialise the driver by reading the PS/2 connection and
     /// identifying the device for mapping inputs.
-    pub fn initialise() -> Result<Self, KeyboardInitError> {
-        let (b1, b2) = identity_devices()?;
+    pub fn initialise() -> Result<Self, KeyboardError> {
+        init_ps2();
+        let (b1, b2) = identify_devices()?;
         Ok(Self {
             b1,
             b2,
@@ -29,6 +30,7 @@ impl<'a> KeyboardDriver<'a> {
 
     /// Handle a keyboard interrupt (IRQ1). This function will
     /// read the input on the data port and parse it.
+    #[inline(never)]
     pub fn keyboard_interrupt_handler(&mut self) {
         let scan_code = read_port_byte(Port::PS2DataPort.into());
         if let Some(input) = self.letter_from_scan_code(scan_code)

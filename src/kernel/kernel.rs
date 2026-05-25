@@ -75,6 +75,7 @@ impl<'a> Kernel<'a> {
 
             self.tss.with(|tss| tss.init(0x90000, 0x10));
             self.load_tss();
+
             Ok(())
         }
     }

@@ -42,12 +42,32 @@ impl<T> GlobalLazy<T> {
         unsafe { self.inner.with(|g| g.replace(inner)) };
     }
 
-    pub unsafe fn with<R>(&self, f: impl FnOnce(&mut T) -> R) -> R
-    {
-        unsafe { self.inner.with(|g| match g {
-            Some(r) => f(r),
-            None => panic!(),
-        }) }
+    /// Obtains a mutable reference to the inner object.
+    /// Will panic when `init` has not yet been called.
+    pub unsafe fn with_unwrap<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
+        unsafe {
+            self.inner.with(|g| match g {
+                Some(r) => f(r),
+                None => panic!(),
+            })
+        }
+    }
+
+    pub unsafe fn with<R>(
+        &self,
+        f_some: impl FnOnce(&mut T) -> R,
+        f_none: impl FnOnce() -> R,
+    ) -> R {
+        unsafe {
+            self.inner.with(|g| match g {
+                Some(r) => f_some(r),
+                None => f_none(),
+            })
+        }
+    }
+
+    pub unsafe fn with_init(&self, f: impl FnOnce(&mut T) -> ()) -> () {
+        unsafe { self.with(f, || {}) }
     }
 }
 

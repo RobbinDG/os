@@ -56,7 +56,7 @@ where
 /// the TTY pipeline to work initially. Definitely improve and generalise later.
 impl TTY<u8> {
     pub unsafe fn write(&mut self, data: u8) -> usize {
-        unsafe { KERNEL.vga_driver.with(|vga| vga.put_char_raw(data, 0, 0)) };
+        unsafe { KERNEL.vga_driver.with_unwrap(|vga| vga.put_char_raw(data, 0, 0)) };
         0
     }
 }

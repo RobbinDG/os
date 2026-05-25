@@ -112,7 +112,7 @@ impl<'a> Shell<'a> {
 
     unsafe fn print_mem(&mut self) {
         unsafe {
-            KERNEL.mem.with(|mem_mgr| {
+            KERNEL.mem.with_unwrap(|mem_mgr| {
                 let mem = mem_mgr.get_memory();
                 self.console.print_ascii("Low mem size: ".as_bytes());
                 self.console.print_decimal(mem.low_mem_size);

@@ -36,13 +36,13 @@ impl SysCall {
         unsafe {
             KERNEL
                 .tmp_tty
-                .with(|tty| tty.write(*(regs.reg.ecx as *const u8) as u8))
+                .with_unwrap(|tty| tty.write(*(regs.reg.ecx as *const u8) as u8))
         }
     }
 
     unsafe fn read(regs: &mut InterruptHandlerData) -> usize {
         unsafe {
-            KERNEL.tmp_tty.with(|tty| {
+            KERNEL.tmp_tty.with_unwrap(|tty| {
                 tty.read(
                     core::slice::from_raw_parts_mut(regs.reg.ecx as *mut u8, regs.reg.edx as usize),
                     regs.reg.edx as usize,

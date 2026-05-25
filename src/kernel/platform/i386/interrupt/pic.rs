@@ -1,7 +1,12 @@
-use crate::kernel::ports::{Port, io_wait, write_port_byte};
+use crate::kernel::ports::{Port, io_wait, read_port_byte, write_port_byte};
 
 const EOI: u8 = 0x20;
 const CASCADE_IRQ: u8 = 2;
+
+// Interrupt masks
+// M: Master
+const M_INT_KEYBOARD: u8 = (1 << 1);
+// S: Slave
 
 enum ICW1 {
     ICW4 = 0x01,
@@ -67,7 +72,7 @@ impl PIC {
         io_wait();
 
         // Unmask
-        write_port_byte(Port::MasterPICData.into(), 0);
-        write_port_byte(Port::SlavePICData.into(), 0);
+        write_port_byte(Port::MasterPICData.into(), !(M_INT_KEYBOARD));
+        write_port_byte(Port::SlavePICData.into(), !0);
     }
 }

@@ -19,7 +19,7 @@ where
     unsafe fn as_decimal<'a>(&'a self) -> Result<DynArray<u8>, KernelError> {
         unsafe {
             let byte_count = Self::decimal_digits();
-            let mut chars = KERNEL.mem.with(|mem| DynArray::new(byte_count, false, mem));
+            let mut chars = KERNEL.mem.with_unwrap(|mem| DynArray::new(byte_count, false, mem));
             let mut remainder = *self;
             let ten = T::from(10);
             let zero = T::from(0);
