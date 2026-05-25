@@ -10,7 +10,8 @@ where
     D: Copy + Default,
 {
     input_buf: [D; BUF_SIZE],
-    input_idx: usize,
+    input_read_idx: usize,
+    input_write_idx: usize,
     input_size: usize,
     // output_buf: [D; BUF_SIZE],
     // output_idx: usize,
@@ -25,7 +26,8 @@ where
     pub fn new(echo: bool) -> Self {
         Self {
             input_buf: [D::default(); BUF_SIZE],
-            input_idx: 0,
+            input_read_idx: 0,
+            input_write_idx: 0,
             input_size: 0,
             echo,
         }
@@ -35,16 +37,16 @@ where
     pub fn read(&mut self, dest: &mut [D], amount: usize) -> usize {
         let actual_amount = min(amount, self.input_size);
         for i in 0..actual_amount {
-            dest[i] = self.input_buf[self.input_idx];
-            self.input_idx = (self.input_idx + 1) % BUF_SIZE;
+            dest[i] = self.input_buf[self.input_read_idx];
+            self.input_read_idx = (self.input_read_idx + 1) % BUF_SIZE;
         }
         self.input_size -= actual_amount;
         actual_amount
     }
 
     pub fn receive_input(&mut self, data: D) {
-        self.input_buf[self.input_idx] = data;
-        self.input_idx = (self.input_idx + 1) % BUF_SIZE;
+        self.input_buf[self.input_read_idx] = data;
+        self.input_write_idx = (self.input_write_idx + 1) % BUF_SIZE;
         self.input_size = min(self.input_size + 1, BUF_SIZE);
         // if self.echo {
         //     self.write(data);

@@ -1,8 +1,8 @@
-use crate::kernel::{
+use crate::{KERNEL, kernel::{
     ports::{Port, read_port_byte},
     ps2::{KeyboardError, identify_devices, init_ps2},
     tty::TTY,
-};
+}};
 
 const LOWER_CASE_OFFSET: u8 = 0x20;
 
@@ -31,12 +31,11 @@ impl<'a> KeyboardDriver<'a> {
     /// Handle a keyboard interrupt (IRQ1). This function will
     /// read the input on the data port and parse it.
     #[inline(never)]
-    pub fn keyboard_interrupt_handler(&mut self) {
+    pub unsafe fn keyboard_interrupt_handler(&mut self) {
         let scan_code = read_port_byte(Port::PS2DataPort.into());
         if let Some(input) = self.letter_from_scan_code(scan_code)
-            && let Some(handler) = &mut self.input_handler
         {
-            handler.receive_input(input);
+            unsafe { KERNEL.tmp_tty.with_unwrap(|tty| tty.receive_input(input)) };
         }
     }
 
