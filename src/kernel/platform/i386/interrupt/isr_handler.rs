@@ -10,11 +10,12 @@ unsafe extern "C" fn isr_handler(regs: &mut InterruptHandlerData) {
     unsafe {
         if regs.int_no & 0xFF == 0x80 {
             black_box({
-                let ret_val = syscall(regs);
-                asm!(
-                    "mov eax, {val}",
-                    val = in(reg) ret_val,
-                )
+                // The input object is directly allocated on the stack and will be
+                // popped back into the process' state once we return from the interrupt.
+                // Normally this is undesirable, but since we know that this ISR is generated
+                // by the callee, we can safely overwrite it and the return value will be available
+                // after the syscall returns.
+                regs.reg.eax = syscall(regs) as u32;
             }
             );
         }
