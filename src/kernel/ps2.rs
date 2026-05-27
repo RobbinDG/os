@@ -200,6 +200,10 @@ pub fn identify_devices() -> Result<(u8, u8), KeyboardError> {
     res
 }
 
+pub fn read_keyboard_response() -> u8 {
+    read_port_byte(PS2_CONTROLLER_DATA_PORT)
+}
+
 fn ps2_send_data(data_byte: u8) {
     while (read_port_byte(PS2_CONTROLLER_STATUS_REGISTER) & INPUT_BUFFER_STATUS) != 0 {}
     write_port_byte(PS2_CONTROLLER_DATA_PORT, data_byte);

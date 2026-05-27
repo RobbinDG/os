@@ -53,6 +53,8 @@ impl<T> GlobalLazy<T> {
         }
     }
 
+    /// Obtains a mutable reference to the inner object and executes the `f_some` closure.
+    /// If it does not exist, an the `f_none` closure is used instead.
     pub unsafe fn with<R>(
         &self,
         f_some: impl FnOnce(&mut T) -> R,

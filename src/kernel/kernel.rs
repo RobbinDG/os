@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::kernel::{
+use crate::{console::Console, kernel::{
     global::{Global, GlobalLazy},
     keyboard_driver::KeyboardDriver,
     mem::MemoryManager,
@@ -11,7 +11,7 @@ use crate::kernel::{
     },
     tty::TTY,
     vga_driver::VGATextDriver,
-};
+}};
 
 const GDT_SIZE: usize = 6;
 
@@ -31,6 +31,7 @@ pub struct Kernel<'a> {
     pub mem: GlobalLazy<MemoryManager>,
     pub keyboard_driver: GlobalLazy<KeyboardDriver<'a>>,
     pub vga_driver: GlobalLazy<VGATextDriver>,
+    pub tmp_console: GlobalLazy<Console>,
     pub tmp_tty: GlobalLazy<TTY<u8>>,
 }
 
@@ -42,6 +43,7 @@ impl<'a> Kernel<'a> {
             mem: GlobalLazy::empty(),
             keyboard_driver: GlobalLazy::empty(),
             vga_driver: GlobalLazy::empty(),
+            tmp_console: GlobalLazy::empty(),
             tmp_tty: GlobalLazy::empty(),
         }
     }
@@ -53,6 +55,7 @@ impl<'a> Kernel<'a> {
 
             // Create kernel components
             let mem = MemoryManager::init();
+            self.mem.init(mem);
 
             // Initialise drivers
             self.vga_driver.init(VGATextDriver {});
@@ -61,6 +64,8 @@ impl<'a> Kernel<'a> {
                 Ok(drv) => drv,
                 Err(_) => panic!(),
             };
+            self.keyboard_driver.init(keyboard_drv);
+
             asm!("sti"); // Sets the enable interrupt flag.
 
             self.tmp_tty.init(TTY::new(true));
@@ -69,9 +74,8 @@ impl<'a> Kernel<'a> {
             // This is done to avoid adding more nesting to this process.
             // drop(console);
 
-            // All state ready.
-            self.mem.init(mem);
-            self.keyboard_driver.init(keyboard_drv);
+            // Initialise kernel applications.
+            self.tmp_console.init(Console::create());
 
             self.tss.with(|tss| tss.init(0x90000, 0x10));
             self.load_tss();

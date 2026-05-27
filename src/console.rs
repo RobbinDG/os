@@ -1,8 +1,9 @@
 use crate::{
+    KERNEL,
     decimal_printable::{DecimalDigits, DecimalPrintable},
     dyn_array::DynArray,
     hex_printable::HexPrintable,
-    kernel::vga_driver::{HEIGHT, VGATextDriver, WIDTH},
+    kernel::vga_driver::{HEIGHT, WIDTH},
 };
 
 static mut X: u16 = 0;
@@ -16,34 +17,27 @@ static mut ACTIVE: bool = false;
 /// it copies this state, storing it back when dropped. This circumvents
 /// problems with mutably borrowing static mutables and follows borrowing
 /// rules.
-pub struct Console<'a> {
+pub struct Console {
     x: u16,
     y: u16,
-    driver: &'a mut VGATextDriver,
 }
 
-impl<'a> Console<'a> {
+impl Console {
     /// Creates a new instance using a driver. The state is not synchronized and
     /// will overwrite existing text when needed.
-    pub unsafe fn create(driver: &'a mut VGATextDriver) -> Console<'a> {
-        unsafe { Self { x: X, y: Y, driver } }
+    pub unsafe fn create() -> Self {
+        unsafe { Self { x: X, y: Y } }
     }
 
     /// Obtains an instance of the TTY, if one has not been used yet.
     /// The returned Option acts as a non-blocking lock, returning `None`
     /// when an instance is already in use.
-    pub unsafe fn get_instance(driver: &'a mut VGATextDriver) -> Option<Console<'a>> {
-        unsafe {
-            if ACTIVE {
-                None
-            } else {
-                Some(Self::create(driver))
-            }
-        }
+    pub unsafe fn get_instance() -> Option<Self> {
+        unsafe { if ACTIVE { None } else { Some(Self::create()) } }
     }
 }
 
-impl<'a> Drop for Console<'a> {
+impl Drop for Console {
     fn drop(&mut self) {
         unsafe {
             X = self.x;
@@ -53,55 +47,67 @@ impl<'a> Drop for Console<'a> {
     }
 }
 
-impl<'a> Console<'a> {
+impl Console {
     pub unsafe fn clear(&mut self) {
-        for i in 0..HEIGHT {
-            unsafe { self.driver.clear_row(i) };
-        }
-        self.x = 0;
-        self.y = 0;
-        self.driver.update_cursor_position(self.x, self.y);
+        unsafe {
+            KERNEL.vga_driver.with_unwrap(|vga| {
+                for i in 0..HEIGHT {
+                    vga.clear_row(i);
+                }
+                self.x = 0;
+                self.y = 0;
+                vga.update_cursor_position(self.x, self.y);
+            })
+        };
     }
 
     pub unsafe fn put_char(&mut self, c: u8) {
         unsafe {
-            self.driver.put_char_raw(c, self.x, self.y);
-            self.move_cursor(1, 0);
+            KERNEL.vga_driver.with_unwrap(|vga| {
+                vga.put_char_raw(c, self.x, self.y);
+                self.move_cursor(1, 0);
+                vga.update_cursor_position(self.x, self.y);
+            });
         }
-        self.driver.update_cursor_position(self.x, self.y);
     }
 
     pub unsafe fn scroll(&mut self, columns: u16) {
         unsafe {
-            for i in 0..HEIGHT {
-                if i + columns < HEIGHT {
-                    self.driver.copy_row(i + columns, i);
-                } else {
-                    self.driver.clear_row(i);
+            KERNEL.vga_driver.with_unwrap(|vga| {
+                for i in 0..HEIGHT {
+                    if i + columns < HEIGHT {
+                        vga.copy_row(i + columns, i);
+                    } else {
+                        vga.clear_row(i);
+                    }
                 }
-            }
+            });
         }
     }
 
     pub unsafe fn bs(&mut self) {
         unsafe {
-            self.driver.put_char_raw(b' ', self.x - 1, self.y);
-            self.move_cursor(-1, 0);
-            self.driver.update_cursor_position(self.x, self.y);
+            KERNEL.vga_driver.with_unwrap(|vga| {
+                vga.put_char_raw(b' ', self.x - 1, self.y);
+                self.move_cursor(-1, 0);
+                vga.update_cursor_position(self.x, self.y);
+            });
         }
     }
 
     pub unsafe fn print_ascii(&mut self, s: &[u8]) {
-        for c in s {
-            unsafe {
-                if *c == 0x00 {
-                    break;
+        unsafe {
+            KERNEL.vga_driver.with_unwrap(|vga| {
+                for c in s {
+                    if *c == 0x00 {
+                        break;
+                    }
+                    vga.put_char_raw(*c, self.x, self.y);
+                    self.move_cursor(1, 0);
                 }
-                self.driver.put_char_raw(*c, self.x, self.y);
-                self.move_cursor(1, 0);
-            }
+                vga.update_cursor_position(self.x, self.y);
+            });
         }
-        self.driver.update_cursor_position(self.x, self.y);
     }
 
     pub fn nl(&mut self) {
@@ -109,7 +115,11 @@ impl<'a> Console<'a> {
             self.move_cursor(0, 1);
         }
         self.x = 0;
-        self.driver.update_cursor_position(self.x, self.y);
+        unsafe {
+            KERNEL
+                .vga_driver
+                .with_unwrap(|vga| vga.update_cursor_position(self.x, self.y))
+        };
     }
 
     pub unsafe fn println_ascii(&mut self, s: &[u8]) {
@@ -121,17 +131,19 @@ impl<'a> Console<'a> {
 
     unsafe fn print_char_buffer<'b>(&mut self, buf: DynArray<u8>) {
         unsafe {
-            for i in 0..buf.len() {
-                match buf.get(i) {
-                    Ok(0) => break,
-                    Ok(c) => {
-                        self.driver.put_char_raw(*c, self.x, self.y);
-                        self.move_cursor(1, 0);
+            KERNEL.vga_driver.with_unwrap(|vga| {
+                for i in 0..buf.len() {
+                    match buf.get(i) {
+                        Ok(0) => break,
+                        Ok(c) => {
+                            vga.put_char_raw(*c, self.x, self.y);
+                            self.move_cursor(1, 0);
+                        }
+                        Err(_) => break,
                     }
-                    Err(_) => break,
                 }
-            }
-            self.driver.update_cursor_position(self.x, self.y);
+                vga.update_cursor_position(self.x, self.y);
+            });
         }
     }
 

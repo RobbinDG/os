@@ -22,7 +22,7 @@ mod hex_printable;
 mod kernel;
 mod console;
 mod programs;
-mod shell;
+// mod shell;
 mod static_str;
 mod sys_event;
 mod util;
@@ -38,7 +38,7 @@ use crate::{
         kernel::Kernel,
         platform::i386::context_switch::ProcessCtrlBlock,
         scheduler::Scheduler,
-    }, programs::{lib::syscall_write, run_shell::run_shell}, shell::Shell
+    }, programs::{lib::syscall_write, run_shell::run_shell}, 
 };
 
 static KERNEL: Kernel = Kernel::new();

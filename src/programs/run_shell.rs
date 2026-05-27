@@ -2,10 +2,11 @@ use core::arch::asm;
 
 use crate::{
     programs::lib::{syscall_read, syscall_write},
-    shell::Shell,
+    // shell::Shell,
 };
 
 /// The main function to-be for the shell program.
+#[inline(never)]
 pub fn run_shell() {
     // let mut shell = unsafe { Shell::new() };
 
