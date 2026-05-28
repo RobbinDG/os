@@ -17,7 +17,7 @@ impl MemoryManager {
         }
     }
 
-    pub unsafe fn malloc(&mut self, size: usize, align: bool) -> *mut u8 {
+    pub unsafe fn map(&mut self, size: usize, align: bool) -> *mut u8 {
         if align && (self.free_mem_addr & !PAGE_SIZE_MASK) > 0 {
             self.free_mem_addr &= PAGE_SIZE_MASK;
             self.free_mem_addr += PAGE_SIZE;
@@ -28,7 +28,7 @@ impl MemoryManager {
         phys_addr
     }
 
-    pub unsafe fn free(&mut self, addr: *mut u8) {}
+    pub unsafe fn unmap(&mut self, addr: *mut u8, length: usize) {}
 
     pub unsafe fn get_memory(&mut self) -> MemSpec {
         self.mem_spec.clone()

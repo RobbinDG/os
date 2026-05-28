@@ -4,6 +4,8 @@ pub enum SysCall {
     Unknown = 0,
     Write = 1,
     Read = 2,
+    MMap = 3,
+    MUnmap = 4,
     _LastDummy,
 }
 
@@ -27,6 +29,8 @@ impl SysCall {
                 SysCall::Unknown => 255,
                 SysCall::Write => Self::write(data),
                 SysCall::Read => Self::read(data),
+                SysCall::MMap => Self::mmap(data),
+                SysCall::MUnmap => Self::munmap(data),
                 SysCall::_LastDummy => 255,
             }
         }
@@ -48,6 +52,23 @@ impl SysCall {
                     regs.reg.edx as usize,
                 )
             })
+        }
+    }
+
+    unsafe fn mmap(regs: &mut InterruptHandlerData) -> usize {
+        unsafe {
+            KERNEL
+                .mem
+                .with_unwrap(|mem| mem.map(regs.reg.ecx as usize, false)) as usize
+        }
+    }
+
+    unsafe fn munmap(regs: &mut InterruptHandlerData) -> usize {
+        unsafe {
+            KERNEL
+                .mem
+                .with_unwrap(|mem| mem.unmap(regs.reg.ecx as *mut u8, regs.reg.edx as usize));
+            0
         }
     }
 }
