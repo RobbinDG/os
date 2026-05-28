@@ -58,7 +58,7 @@ where
 /// the TTY pipeline to work initially. Definitely improve and generalise later.
 impl TTY<u8> {
     pub unsafe fn write(&mut self, data: u8) -> usize {
-        unsafe { KERNEL.tmp_console.with_unwrap(|console| console.print_ascii(&[data])) };
+        unsafe { KERNEL.tmp_console.with_unwrap(|console| console.write_ansi(&[data])) };
         0
     }
 }

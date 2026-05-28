@@ -10,6 +10,8 @@ static mut X: u16 = 0;
 static mut Y: u16 = 0;
 static mut ACTIVE: bool = false;
 
+const BUF_SIZE: usize = 16;
+
 /// Offers TTY printing to console when in console mode.
 ///
 /// Under the hood, a global state is maintained that
@@ -20,13 +22,22 @@ static mut ACTIVE: bool = false;
 pub struct Console {
     x: u16,
     y: u16,
+    buf: [u8; BUF_SIZE],
+    write_idx: usize,
 }
 
 impl Console {
     /// Creates a new instance using a driver. The state is not synchronized and
     /// will overwrite existing text when needed.
     pub unsafe fn create() -> Self {
-        unsafe { Self { x: X, y: Y } }
+        unsafe {
+            Self {
+                x: X,
+                y: Y,
+                buf: [0; BUF_SIZE],
+                write_idx: 0,
+            }
+        }
     }
 
     /// Obtains an instance of the TTY, if one has not been used yet.
@@ -48,6 +59,41 @@ impl Drop for Console {
 }
 
 impl Console {
+    pub unsafe fn write_ansi(&mut self, chars: &[u8]) {
+        for i in 0..chars.len() {
+            // Printable characters
+            if char::is_ascii_graphic(&(chars[i] as char)) {
+                unsafe { self.print_ascii(&[chars[i]]) };
+                continue;
+            }
+
+            // C0 control codes
+            unsafe {
+                match chars[i] {
+                    0x08 => {
+                        self.bs();
+                        continue;
+                    }
+                    0x09 => {
+                        // Tab
+                        continue;
+                    }
+                    0x0A => {
+                        // Line feed
+                        self.nl();
+                        continue;
+                    }
+                    0x0D => {
+                        // Carriage return
+                        self.move_cursor(0, 0);
+                        continue;
+                    }
+                    _ => {} // I hate this.
+                }
+            }
+        }
+    }
+
     pub unsafe fn clear(&mut self) {
         unsafe {
             KERNEL.vga_driver.with_unwrap(|vga| {
