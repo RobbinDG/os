@@ -12,7 +12,7 @@ impl<'a, T: Sized> DynArray<T> {
     pub unsafe fn new(count: usize, align: bool, mem: &'a mut MemoryManager) -> Self {
         unsafe {
             let size = core::mem::size_of::<T>() * count;
-            let start = mem.malloc(size, align) as *mut T;
+            let start = mem.map(size, align) as *mut T;
             Self { start, size }
         }
     }

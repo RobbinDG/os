@@ -1,3 +1,5 @@
+use core::slice;
+
 use crate::{KERNEL, kernel::platform::i386::interrupt::data::InterruptHandlerData};
 
 pub enum SysCall {
@@ -38,9 +40,12 @@ impl SysCall {
 
     unsafe fn write(regs: &mut InterruptHandlerData) -> usize {
         unsafe {
-            KERNEL
-                .tmp_tty
-                .with_unwrap(|tty| tty.write(*(regs.reg.ecx as *const u8) as u8))
+            KERNEL.tmp_tty.with_unwrap(|tty| {
+                tty.write(slice::from_raw_parts(
+                    regs.reg.ecx as *const u8,
+                    regs.reg.edx as usize,
+                ))
+            })
         }
     }
 

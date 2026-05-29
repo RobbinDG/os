@@ -1,6 +1,14 @@
-use core::{arch::naked_asm, ptr};
+use core::{
+    arch::naked_asm,
+    ops::{Index, IndexMut},
+    ptr, slice,
+};
 
-use crate::kernel::syscalls::SysCall;
+use crate::{
+    decimal_printable::{DecimalDigits, DecimalPrintable},
+    hex_printable::HexPrintable,
+    kernel::{kernel::KernelError, syscalls::SysCall},
+};
 
 #[inline(never)]
 pub fn syscall_write<T: Sized>(/* fd: usize, */ buf: &[T], count: usize) -> usize {
@@ -58,27 +66,54 @@ unsafe extern "C" fn run_syscall(function: usize, arg1: usize, arg2: usize) -> u
     )
 }
 
-pub struct MemBlock<T: Sized> {
+pub struct Vec<T: Sized> {
     addr: *mut T,
     size: usize,
 }
 
-impl<T: Sized> MemBlock<T> {
-    pub fn malloc(size: usize) -> Option<Self> {
+impl<T: Sized> Vec<T> {
+    pub fn malloc(size: usize) -> Result<Self, KernelError> {
         let addr = syscall_mmap::<T>(size);
         if addr.is_null() {
-            return None;
+            return Err(KernelError::OutOfMemory);
         }
-        Some(Self { addr, size })
+        Ok(Self { addr, size })
     }
 }
 
-impl<T: Sized> Drop for MemBlock<T> {
+impl<T: Sized> Drop for Vec<T> {
     fn drop(&mut self) {
         syscall_munmap(self.addr, self.size);
     }
 }
 
+impl<T: Sized> Index<usize> for Vec<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        if index >= self.size {
+            panic!()
+        }
+        unsafe { &*self.addr.add(index) }
+    }
+}
+
+impl<T: Sized> IndexMut<usize> for Vec<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index >= self.size {
+            panic!()
+        }
+        unsafe { &mut *self.addr.add(index) }
+    }
+}
+
+impl<T: Sized> Vec<T> {
+    pub fn as_slice(&self) -> &[T] {
+        unsafe { slice::from_raw_parts(self.addr as *const T, self.size) }
+    }
+}
+
+#[inline(never)]  // TMP
 pub fn print_ascii(s: &[u8]) {
     // TODO handle output to ensure safety
     syscall_write(s, s.len());
@@ -89,4 +124,22 @@ pub fn println_ascii(s: &[u8]) {
     // TODO combine into 1 syscall for efficiency
     syscall_write(s, s.len());
     syscall_write(&[b'\n'], 1);
+}
+
+pub unsafe fn print_decimal<T: DecimalPrintable + DecimalDigits>(n: T) {
+    unsafe {
+        match n.as_decimal() {
+            Ok(dec) => print_ascii(dec.as_slice()),
+            Err(_) => return,
+        }
+    }
+}
+
+pub unsafe fn print_hex<T: HexPrintable>(n: T) {
+    unsafe {
+        match n.as_hex() {
+            Ok(hex) => print_ascii(hex.as_slice()),
+            Err(_) => return,
+        }
+    }
 }

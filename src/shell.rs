@@ -1,4 +1,11 @@
-use crate::{KERNEL, console::Console, programs::ps2_cli::ps2_cli, static_str::StaticString};
+use crate::{
+    KERNEL,
+    programs::{
+        lib::{print_ascii, print_decimal, print_hex, println_ascii},
+        ps2_cli::ps2_cli,
+    },
+    static_str::StaticString,
+};
 
 const BUF_SIZE: usize = 32;
 
@@ -8,8 +15,7 @@ enum Command {
     Mem,
     Commands,
 }
-pub struct Shell<'a> {
-    console: Console<'a>,
+pub struct Shell {
     buf: StaticString<BUF_SIZE, u8>,
     cmds: [([u8; BUF_SIZE], Command); 4], // TODO this implementation needs work!
 }
@@ -27,10 +33,9 @@ const fn make_command(command_str: &str) -> [u8; BUF_SIZE] {
     out
 }
 
-impl<'a> Shell<'a> {
-    pub unsafe fn new(console: Console<'a>) -> Self {
+impl Shell {
+    pub unsafe fn new() -> Self {
         let mut self_ = Self {
-            console,
             buf: StaticString::new(0),
             cmds: [
                 (make_command(""), Command::Empty),
@@ -45,19 +50,17 @@ impl<'a> Shell<'a> {
 
     pub unsafe fn handle_key(&mut self, key: u8) {
         unsafe {
+            print_ascii(&[key]);
             match key {
                 0x08 => {
                     if self.buf.len() > 0 {
-                        self.console.bs();
                         self.buf.pop();
                     }
                 }
                 0x0A => {
-                    self.console.nl();
                     self.execute_command();
                 }
                 _ => {
-                    self.console.put_char(key);
                     self.buf.push(key);
                 }
             }
@@ -76,7 +79,7 @@ impl<'a> Shell<'a> {
                     unsafe {
                         match cmd_func {
                             Command::Empty => {}
-                            Command::PS2 => ps2_cli(&mut self.console),
+                            Command::PS2 => ps2_cli(),
                             Command::Commands => self.print_cmd_options(),
                             Command::Mem => self.print_mem(),
                         }
@@ -85,9 +88,7 @@ impl<'a> Shell<'a> {
                 }
             }
         }
-        unsafe {
-            self.console.println_ascii("Command not recognised.".as_bytes());
-        }
+        println_ascii("Command not recognised.".as_bytes());
     }
 
     unsafe fn execute_command(&mut self) {
@@ -99,14 +100,12 @@ impl<'a> Shell<'a> {
     }
 
     unsafe fn print_flair(&mut self) {
-        unsafe { self.console.print_ascii("$> ".as_bytes()) };
+        print_ascii("$> ".as_bytes());
     }
 
     unsafe fn print_cmd_options(&mut self) {
-        unsafe {
-            for (cmd_str, _) in &self.cmds {
-                self.console.println_ascii(cmd_str);
-            }
+        for (cmd_str, _) in &self.cmds {
+            println_ascii(cmd_str);
         }
     }
 
@@ -114,19 +113,18 @@ impl<'a> Shell<'a> {
         unsafe {
             KERNEL.mem.with_unwrap(|mem_mgr| {
                 let mem = mem_mgr.get_memory();
-                self.console.print_ascii("Low mem size: ".as_bytes());
-                self.console.print_decimal(mem.low_mem_size);
-                self.console.println_ascii(" kb".as_bytes());
-                self.console.nl();
+                print_ascii("Low mem size: ".as_bytes());
+                print_decimal(mem.low_mem_size);
+                println_ascii(" kb".as_bytes());
                 for hm in mem.high_mem {
                     match hm {
                         Some(entry) => {
-                            self.console.print_hex(entry.base);
-                            self.console.print_ascii(" - ".as_bytes());
-                            self.console.print_hex(entry.len);
-                            self.console.print_ascii(" - ".as_bytes());
-                            self.console.print_hex::<u8>((&entry.typ).into());
-                            self.console.nl();
+                            print_hex(entry.base);
+                            print_ascii(" - ".as_bytes());
+                            print_hex(entry.len);
+                            print_ascii(" - ".as_bytes());
+                            print_hex::<u8>((&entry.typ).into());
+                            println_ascii(&[]);
                         }
                         None => return,
                     }

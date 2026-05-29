@@ -19,6 +19,7 @@ pub enum KernelError {
     NotReady,
     OutOfBounds,
     Busy,
+    OutOfMemory,
 }
 
 pub struct Kernel<'a> {

@@ -1,6 +1,6 @@
 use core::ops::{Div, Rem};
 
-use crate::{KERNEL, dyn_array::DynArray, kernel::kernel::KernelError};
+use crate::{kernel::kernel::KernelError, programs::lib::Vec};
 
 pub trait DecimalDigits {
     fn decimal_digits() -> usize;
@@ -9,30 +9,28 @@ pub trait DecimalDigits {
 }
 
 pub trait DecimalPrintable {
-    unsafe fn as_decimal<'a>(&'a self) -> Result<DynArray<u8>, KernelError>;
+    fn as_decimal<'a>(&'a self) -> Result<Vec<u8>, KernelError>;
 }
 
 impl<T> DecimalPrintable for T
 where
     T: Div<T, Output = T> + Rem<T, Output = T> + Eq + Copy + From<u8> + DecimalDigits,
 {
-    unsafe fn as_decimal<'a>(&'a self) -> Result<DynArray<u8>, KernelError> {
-        unsafe {
-            let byte_count = Self::decimal_digits();
-            let mut chars = KERNEL.mem.with_unwrap(|mem| DynArray::new(byte_count, false, mem));
-            let mut remainder = *self;
-            let ten = T::from(10);
-            let zero = T::from(0);
-            for i in 0..byte_count {
-                if remainder == zero {
-                    break;
-                }
-                let digit = (remainder % ten).extract_low_byte();
-                remainder = remainder / ten;
-                chars.set(i, digit + b'0')?;
+    fn as_decimal<'a>(&'a self) -> Result<Vec<u8>, KernelError> {
+        let byte_count = Self::decimal_digits();
+        let mut chars = Vec::<u8>::malloc(byte_count)?;
+        let mut remainder = *self;
+        let ten = T::from(10);
+        let zero = T::from(0);
+        for i in 0..byte_count {
+            if remainder == zero {
+                break;
             }
-            Ok(chars)
+            let digit = (remainder % ten).extract_low_byte();
+            remainder = remainder / ten;
+            chars[i] = digit + b'0';
         }
+        Ok(chars)
     }
 }
 

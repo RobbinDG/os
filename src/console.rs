@@ -61,8 +61,8 @@ impl Drop for Console {
 impl Console {
     pub unsafe fn write_ansi(&mut self, chars: &[u8]) {
         for i in 0..chars.len() {
-            // Printable characters
-            if char::is_ascii_graphic(&(chars[i] as char)) {
+            // Non-control characters
+            if !char::is_ascii_control(&(chars[i] as char)) {
                 unsafe { self.print_ascii(&[chars[i]]) };
                 continue;
             }
@@ -193,23 +193,6 @@ impl Console {
         }
     }
 
-    pub unsafe fn print_decimal<T: DecimalPrintable + DecimalDigits>(&mut self, n: T) {
-        unsafe {
-            match n.as_decimal() {
-                Ok(dec) => self.print_char_buffer(dec),
-                Err(_) => return,
-            }
-        }
-    }
-
-    pub unsafe fn print_hex<T: HexPrintable>(&mut self, n: T) {
-        unsafe {
-            match n.as_hex() {
-                Ok(hex) => self.print_char_buffer(hex),
-                Err(_) => return,
-            }
-        }
-    }
 
     unsafe fn move_cursor(&mut self, dx: i16, dy: i16) {
         let x_acc = self.x.wrapping_add_signed(dx);

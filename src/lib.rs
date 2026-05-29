@@ -16,13 +16,13 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
+mod console;
 mod decimal_printable;
 mod dyn_array;
 mod hex_printable;
 mod kernel;
-mod console;
 mod programs;
-// mod shell;
+mod shell;
 mod static_str;
 mod sys_event;
 mod util;
@@ -31,14 +31,16 @@ mod vga;
 use core::arch::asm;
 
 use crate::{
-    console::Console, kernel::{
+    console::Console,
+    kernel::{
         acpi::acpi::ACPI,
         event_buf::empty_event_buffer,
         global::{Global, GlobalLazy},
         kernel::Kernel,
         platform::i386::context_switch::ProcessCtrlBlock,
         scheduler::Scheduler,
-    }, programs::{lib::syscall_write, run_shell::run_shell}, 
+    },
+    programs::{lib::syscall_write, run_shell::run_shell},
 };
 
 static KERNEL: Kernel = Kernel::new();
@@ -113,7 +115,6 @@ fn sample_process() {
     let buf = [b'A'];
     syscall_write(&buf, buf.len());
 }
-
 
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {
