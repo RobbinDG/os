@@ -113,7 +113,7 @@ impl<T: Sized> Vec<T> {
     }
 }
 
-#[inline(never)]  // TMP
+#[inline(never)] // TMP
 pub fn print_ascii(s: &[u8]) {
     // TODO handle output to ensure safety
     syscall_write(s, s.len());
@@ -127,19 +127,15 @@ pub fn println_ascii(s: &[u8]) {
 }
 
 pub unsafe fn print_decimal<T: DecimalPrintable + DecimalDigits>(n: T) {
-    unsafe {
-        match n.as_decimal() {
-            Ok(dec) => print_ascii(dec.as_slice()),
-            Err(_) => return,
-        }
+    match n.as_decimal() {
+        Ok(dec) => print_ascii(dec.as_slice()),
+        Err(_) => return,
     }
 }
 
 pub unsafe fn print_hex<T: HexPrintable>(n: T) {
-    unsafe {
-        match n.as_hex() {
-            Ok(hex) => print_ascii(hex.as_slice()),
-            Err(_) => return,
-        }
+    match n.as_hex() {
+        Ok(hex) => print_ascii(hex.as_slice()),
+        Err(_) => return,
     }
 }

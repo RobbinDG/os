@@ -44,7 +44,10 @@ impl Shell {
                 (make_command("mem"), Command::Mem),
             ],
         };
-        unsafe { self_.print_flair() };
+        unsafe {
+            print_ascii("\x1b[1J".as_bytes());
+            self_.print_flair()
+        };
         self_
     }
 

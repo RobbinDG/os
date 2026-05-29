@@ -1,8 +1,5 @@
 use crate::{
     KERNEL,
-    decimal_printable::{DecimalDigits, DecimalPrintable},
-    dyn_array::DynArray,
-    hex_printable::HexPrintable,
     kernel::vga_driver::{HEIGHT, WIDTH},
 };
 
@@ -10,9 +7,7 @@ static mut X: u16 = 0;
 static mut Y: u16 = 0;
 static mut ACTIVE: bool = false;
 
-const BUF_SIZE: usize = 16;
-
-/// Offers TTY printing to console when in console mode.
+/// A virtual console implementation that can be controlled using ANSI control codes.
 ///
 /// Under the hood, a global state is maintained that
 /// contains the cursor position. When an instance is created,
@@ -22,22 +17,13 @@ const BUF_SIZE: usize = 16;
 pub struct Console {
     x: u16,
     y: u16,
-    buf: [u8; BUF_SIZE],
-    write_idx: usize,
 }
 
 impl Console {
     /// Creates a new instance using a driver. The state is not synchronized and
     /// will overwrite existing text when needed.
     pub unsafe fn create() -> Self {
-        unsafe {
-            Self {
-                x: X,
-                y: Y,
-                buf: [0; BUF_SIZE],
-                write_idx: 0,
-            }
-        }
+        unsafe { Self { x: X, y: Y } }
     }
 
     /// Obtains an instance of the TTY, if one has not been used yet.
@@ -60,10 +46,44 @@ impl Drop for Console {
 
 impl Console {
     pub unsafe fn write_ansi(&mut self, chars: &[u8]) {
+        let mut esc_param = [0u8; 4];
+        let mut esc_intermediate = [0u8; 4];
+        let mut esc_param_idx = 0usize;
+        let mut esc_intermediate_idx = 0usize;
+        let mut in_esc = false;
         for i in 0..chars.len() {
+            // CSI commands
+            if in_esc {
+                match chars[i] {
+                    b'[' => {
+                        esc_param_idx = 0;
+                        esc_intermediate_idx = 0;
+                    }
+                    0x30..=0x3F => {
+                        esc_param[esc_param_idx] = chars[i];
+                        esc_param_idx += 1;
+                    }
+                    0x20..=0x2F => {
+                        esc_intermediate[esc_intermediate_idx] = chars[i];
+                        esc_intermediate_idx += 1;
+                    }
+                    0x40..=0x7E => {
+                        match chars[i]{
+                            b'J' => {
+                                unsafe { self.clear() };
+                            }
+                            _ => {} // Unknown code, skip.
+                        }
+                        in_esc = false;
+                    }
+                    _ => {} // Skip any non-escape char
+                }
+                continue;
+            }
+
             // Non-control characters
             if !char::is_ascii_control(&(chars[i] as char)) {
-                unsafe { self.print_ascii(&[chars[i]]) };
+                unsafe { self.put_char(chars[i]) };
                 continue;
             }
 
@@ -86,6 +106,10 @@ impl Console {
                     0x0D => {
                         // Carriage return
                         self.move_cursor(0, 0);
+                        continue;
+                    }
+                    0x1B => {
+                        in_esc = true;
                         continue;
                     }
                     _ => {} // I hate this.
@@ -141,21 +165,6 @@ impl Console {
         }
     }
 
-    pub unsafe fn print_ascii(&mut self, s: &[u8]) {
-        unsafe {
-            KERNEL.vga_driver.with_unwrap(|vga| {
-                for c in s {
-                    if *c == 0x00 {
-                        break;
-                    }
-                    vga.put_char_raw(*c, self.x, self.y);
-                    self.move_cursor(1, 0);
-                }
-                vga.update_cursor_position(self.x, self.y);
-            });
-        }
-    }
-
     pub fn nl(&mut self) {
         unsafe {
             self.move_cursor(0, 1);
@@ -167,32 +176,6 @@ impl Console {
                 .with_unwrap(|vga| vga.update_cursor_position(self.x, self.y))
         };
     }
-
-    pub unsafe fn println_ascii(&mut self, s: &[u8]) {
-        unsafe {
-            self.print_ascii(s);
-            self.nl();
-        }
-    }
-
-    unsafe fn print_char_buffer<'b>(&mut self, buf: DynArray<u8>) {
-        unsafe {
-            KERNEL.vga_driver.with_unwrap(|vga| {
-                for i in 0..buf.len() {
-                    match buf.get(i) {
-                        Ok(0) => break,
-                        Ok(c) => {
-                            vga.put_char_raw(*c, self.x, self.y);
-                            self.move_cursor(1, 0);
-                        }
-                        Err(_) => break,
-                    }
-                }
-                vga.update_cursor_position(self.x, self.y);
-            });
-        }
-    }
-
 
     unsafe fn move_cursor(&mut self, dx: i16, dy: i16) {
         let x_acc = self.x.wrapping_add_signed(dx);

@@ -1,8 +1,4 @@
-use core::arch::asm;
-
-use crate::{
-    programs::lib::{syscall_read, syscall_write}, shell::Shell,
-};
+use crate::{programs::lib::syscall_read, shell::Shell};
 
 /// The main function to-be for the shell program.
 #[inline(never)]
