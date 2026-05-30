@@ -63,35 +63,6 @@ enum PS2DeviceCommand {
     DisableScanning = 0xF5,
 }
 
-/*
-pub fn tmp() {
-    let status = unsafe { read_status() };
-    unsafe {
-        if let Some(mut tty) = VGATextWriter::get_instance() {
-            match status {
-                Ok(s) => {
-                    if s.output_buf_full {
-                        tty.println_ascii("Output buf".as_bytes());
-                    }
-                    if s.input_buf_full {
-                        tty.println_ascii("Input buf".as_bytes());
-                    }
-                    if s.sys_flag {
-                        tty.println_ascii("Sysflag".as_bytes());
-                    }
-                    if s.data_for_device {
-                        tty.println_ascii("Device data".as_bytes());
-                    }
-                    tty.println_ascii("done".as_bytes());
-                }
-                Err(PS2Error::TimeOut) => tty.println_ascii("Timeout".as_bytes()),
-                Err(PS2Error::Parity) => tty.println_ascii("Parity".as_bytes()),
-            }
-        }
-    }
-}
-*/
-
 unsafe fn read_status() -> Result<PS2Status, PS2Error> {
     let status_reg = read_port_byte(Port::PS2StatusCmdReg as u16);
     if read_bit_mask(status_reg, TIME_OUT_ERROR) {
@@ -147,8 +118,8 @@ pub fn init_ps2() {
     ps2_send_data(PS2_DEV_CMD_RESET);
     let b1 = ps2_read_response_data(); // Should be 0xFA
     let b2 = ps2_read_response_data(); // Should be 0xAA
-    let b3 = ps2_read_response_data_or_timeout(); // Should be device ID byte 1
-    let b4 = ps2_read_response_data_or_timeout(); // Should be device ID byte 2
+    let _b3 = ps2_read_response_data_or_timeout(); // Should be device ID byte 1
+    let _b4 = ps2_read_response_data_or_timeout(); // Should be device ID byte 2
     if b1 != 0xFA || b2 != 0xAA {
         // No acknowledgement of reset from device
         loop {}
@@ -226,7 +197,7 @@ fn ps2_read_response_data_or_timeout() -> Option<u8> {
     let mut attempts = 256;
     while (read_port_byte(PS2_CONTROLLER_STATUS_REGISTER) & OUTPUT_BUFFER_STATUS) == 0 {
         attempts -= 1;
-        if (attempts == 0) {
+        if attempts == 0 {
             return None;
         }
     }

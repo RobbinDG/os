@@ -1,5 +1,6 @@
-use crate::{
-    kernel::vga_driver::{HEIGHT, WIDTH},
+use crate::kernel::{
+    KERNEL,
+    vga_driver::{HEIGHT, WIDTH},
 };
 
 static mut X: u16 = 0;
@@ -67,7 +68,7 @@ impl Console {
                         esc_intermediate_idx += 1;
                     }
                     0x40..=0x7E => {
-                        match chars[i]{
+                        match chars[i] {
                             b'J' => {
                                 unsafe { self.clear() };
                             }

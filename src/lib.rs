@@ -16,7 +16,6 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-mod console;
 mod decimal_printable;
 mod dyn_array;
 mod hex_printable;
@@ -28,16 +27,9 @@ mod sys_event;
 mod util;
 mod vga;
 
-use core::arch::asm;
-
 use crate::{
-    console::Console,
     kernel::{
-        acpi::acpi::ACPI,
-        event_buf::empty_event_buffer,
-        global::{Global, GlobalLazy},
-        kernel::{Kernel, init_kernel},
-        platform::i386::context_switch::ProcessCtrlBlock,
+        global::Global, kernel::init_kernel, platform::i386::context_switch::ProcessCtrlBlock,
         scheduler::Scheduler,
     },
     programs::{lib::syscall_write, run_shell::run_shell},
@@ -120,39 +112,5 @@ pub extern "C" fn kernel_main() -> ! {
         init_kernel();
 
         scheduler_entrypoint();
-        // let mut vga = KERNEL.vga_driver().lock();
-        // if let Some(mut tty) = VGATextWriter::get_instance(&mut vga) {
-        //     match ACPI::load() {
-        //         Some(acpi) => {
-        //             let mut iter = acpi.iter();
-        //             while let Some(header) = iter.next() {
-        //                 tty.println_ascii(&header.signature)
-        //             }
-        //         }
-        //         None => tty.println_ascii("No RDSP".as_bytes()),
-        //     }
-        //     let mut shell = Shell::new(tty);
-        //     loop {
-        //         asm!("hlt");
-        //         let event_buf = empty_event_buffer();
-        //         for i in 0..event_buf.len() {
-        //             if let Some(Some(event)) = event_buf.get(i) {
-        //                 match event {
-        //                     sys_event::SysEvent::Keyboard => {
-        //                         if let Some(key) =
-        //                             kernel.keyboard_driver().lock().keyboard_interrupt_handler()
-        //                         {
-        //                             shell.handle_key(key);
-        //                         }
-        //                     }
-        //                 }
-        //             } else {
-        //                 break;
-        //             }
-        //         }
-        //     }
-        // }
-
-        loop {}
     }
 }

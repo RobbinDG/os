@@ -24,7 +24,6 @@ unsafe extern "C" fn irq_handler(mut regs: InterruptHandlerData) {
                     SysEvent::Keyboard => KERNEL
                         .keyboard_driver
                         .with_init(|drv| drv.keyboard_interrupt_handler()),
-                    _ => (),
                 }
             }
         }

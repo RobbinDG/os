@@ -1,6 +1,7 @@
 use crate::kernel::kernel::Kernel;
 
 pub mod acpi;
+mod console;
 pub mod event_buf;
 pub mod global;
 mod interrupt_handlers;
