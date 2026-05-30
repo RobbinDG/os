@@ -1,5 +1,4 @@
 use crate::{
-    KERNEL,
     kernel::vga_driver::{HEIGHT, WIDTH},
 };
 

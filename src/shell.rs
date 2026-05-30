@@ -1,5 +1,4 @@
 use crate::{
-    KERNEL,
     programs::{
         lib::{print_ascii, print_decimal, print_hex, println_ascii},
         ps2_cli::ps2_cli,

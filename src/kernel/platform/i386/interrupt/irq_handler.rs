@@ -1,8 +1,12 @@
-use crate::{KERNEL, kernel::{
-    event_buf::{EVENT_BUF, EVENT_BUF_SIZE},
-    interrupt_handlers::INTERRUPT_HANDLERS,
-    platform::i386::interrupt::{data::InterruptHandlerData, pic::PIC},
-}, sys_event::SysEvent};
+use crate::{
+    kernel::{
+        KERNEL,
+        event_buf::{EVENT_BUF, EVENT_BUF_SIZE},
+        interrupt_handlers::INTERRUPT_HANDLERS,
+        platform::i386::interrupt::{data::InterruptHandlerData, pic::PIC},
+    },
+    sys_event::SysEvent,
+};
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn irq_handler(mut regs: InterruptHandlerData) {
@@ -17,7 +21,9 @@ unsafe extern "C" fn irq_handler(mut regs: InterruptHandlerData) {
                 EVENT_BUF.buf[EVENT_BUF.len % EVENT_BUF_SIZE] = Some(event);
                 EVENT_BUF.len += 1;
                 match event {
-                    SysEvent::Keyboard => KERNEL.keyboard_driver.with_init(|drv| drv.keyboard_interrupt_handler()),
+                    SysEvent::Keyboard => KERNEL
+                        .keyboard_driver
+                        .with_init(|drv| drv.keyboard_interrupt_handler()),
                     _ => (),
                 }
             }

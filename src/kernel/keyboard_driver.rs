@@ -1,9 +1,7 @@
-use crate::{
+use crate::kernel::{
     KERNEL,
-    kernel::{
-        ps2::{KeyboardError, identify_devices, init_ps2, read_keyboard_response},
-        tty::TTY,
-    },
+    ps2::{KeyboardError, identify_devices, init_ps2, read_keyboard_response},
+    tty::TTY,
 };
 
 const LOWER_CASE_OFFSET: u8 = 0x20;

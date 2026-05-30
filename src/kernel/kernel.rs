@@ -1,19 +1,27 @@
 use core::arch::asm;
 
-use crate::{console::Console, kernel::{
-    global::{Global, GlobalLazy},
-    keyboard_driver::KeyboardDriver,
-    mem::MemoryManager,
-    platform::i386::{
-        gdt::{CompiledGDTEntry, GDTEntry, GDTR},
-        interrupt::idt::setup_idt,
-        tss::TSS,
+use crate::{
+    console::Console,
+    kernel::{
+        KERNEL,
+        global::{Global, GlobalLazy},
+        keyboard_driver::KeyboardDriver,
+        mem::MemoryManager,
+        platform::i386::{
+            gdt::{CompiledGDTEntry, GDTEntry, GDTR},
+            interrupt::idt::setup_idt,
+            tss::TSS,
+        },
+        tty::TTY,
+        vga_driver::VGATextDriver,
     },
-    tty::TTY,
-    vga_driver::VGATextDriver,
-}};
+};
 
 const GDT_SIZE: usize = 6;
+
+pub fn init_kernel() -> Result<(), ()> {
+    unsafe { KERNEL.init() }
+}
 
 pub enum KernelError {
     NotReady,
