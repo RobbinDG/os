@@ -1,12 +1,12 @@
 use core::arch::asm;
 
 use crate::kernel::{
-        KERNEL, console::Console, global::{Global, GlobalLazy}, keyboard_driver::KeyboardDriver, mem::MemoryManager, platform::i386::{
-            gdt::{CompiledGDTEntry, GDTEntry, GDTR},
-            interrupt::idt::setup_idt,
-            tss::TSS,
-        }, tty::TTY, vga_driver::VGATextDriver
-    };
+    KERNEL, console::Console, global::{Global, GlobalLazy}, keyboard_driver::KeyboardDriver, mem::MemoryManager, paging::mmu::MMU, platform::i386::{
+        gdt::{CompiledGDTEntry, GDTEntry, GDTR},
+        interrupt::idt::setup_idt,
+        tss::TSS,
+    }, tty::TTY, vga_driver::VGATextDriver
+};
 
 const GDT_SIZE: usize = 6;
 
@@ -76,10 +76,14 @@ impl<'a> Kernel<'a> {
 
             // Initialise kernel applications.
             self.tmp_console.init(Console::create());
+            self.kprintln("[I] Set up console".as_bytes());
 
             self.tss.with(|tss| tss.init(0x90000, 0x10));
             self.load_tss();
 
+            self.kprintln("[I] Set up TSS".as_bytes());
+            let mmu = MMU::create(0x00100000 as *mut u8);
+            mmu.enable();
             Ok(())
         }
     }
@@ -122,5 +126,13 @@ impl<'a> Kernel<'a> {
         new_gdtr.store();
         unsafe { asm!("sti") }
         5 * core::mem::size_of::<CompiledGDTEntry>()
+    }
+
+    unsafe fn kprintln(&self, chars: &[u8]) {
+        unsafe {
+            self.tmp_console.with_unwrap(|console| {
+                console.write_ansi(chars);
+            })
+        }
     }
 }
