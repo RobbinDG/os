@@ -1,7 +1,6 @@
 use core::cmp::min;
 
-pub const PAGE_FRAME_SIZE: usize = 4096;
-pub const PAGE_TABLE_ENTRIES: usize = 1024;
+use crate::kernel::platform::i386::paging::constants::{PAGE_FRAME_SIZE, PAGE_TABLE_ENTRIES};
 
 const F_PRESENT: u32 = 1 << 0;
 const F_READ_WRITE: u32 = 1 << 1;
@@ -25,13 +24,24 @@ impl RawPageTableEntry {
         Self(0x0000)
     }
 
+    #[inline(always)]
     pub fn base(&self) -> *const () {
         (self.0 & M_PAGE_BASE) as *const ()
     }
 
+    #[inline(always)]
+    pub fn present(&self) -> bool {
+        (self.0 & F_PRESENT) > 0
+    }
+
     pub fn map_to(&mut self, addr: *const ()) {
         self.0 = (addr as u32) & M_PAGE_BASE;
-        self.0 |= F_PRESENT;
+        // TODO make this not accessible by ring 3 / user mode by default.
+        self.0 |= F_PRESENT | F_READ_WRITE | F_USER_SUPER;
+    }
+
+    pub fn unmap(&mut self) {
+        self.0 &= !F_PRESENT
     }
 }
 
@@ -45,6 +55,10 @@ impl PageTable {
 
     pub unsafe fn get_entry(&self, index: usize) -> &RawPageTableEntry {
         &self.0[index]
+    }
+
+    pub unsafe fn get_entry_mut(&mut self, index: usize) -> &mut RawPageTableEntry {
+        &mut self.0[index]
     }
 
     pub fn linear_map(&mut self, start: *const (), end: *const ()) {

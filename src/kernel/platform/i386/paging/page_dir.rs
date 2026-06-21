@@ -1,7 +1,4 @@
-use crate::kernel::platform::i386::paging::page_table::PageTable;
-
-
-pub const PAGE_DIR_ENTRIES: usize = 1024;
+use crate::kernel::platform::i386::paging::{constants::PAGE_DIR_ENTRIES, page_table::PageTable};
 
 const F_PRESENT: u32 = 1 << 0;
 const F_READ_WRITE: u32 = 1 << 1;
@@ -53,7 +50,7 @@ impl RawPageDirEntry {
         // Only the upper 20 bits are used. The lower should all be 0 as a page
         // table address is aligned at 4KiB.
         let addr = table as *const PageTable as u32 & M_PAGE_TABLE;
-        self.0 |= F_PRESENT | F_READ_WRITE;
+        self.0 |= F_PRESENT | F_READ_WRITE | F_USER_SUPER;
         self.0 &= !(F_PAGE_SIZE | F_AVAILABLE | F_ACCESSED);
         self.0 = (self.0 & !M_PAGE_TABLE) | addr;
     }
@@ -68,6 +65,11 @@ impl RawPageDirEntry {
 
     pub unsafe fn get_table_mut(&mut self) -> &mut PageTable {
         unsafe { &mut *((self.0 & M_PAGE_TABLE) as *mut PageTable) }
+    }
+
+    #[inline(always)]
+    pub fn present(&self) -> bool {
+        (self.0 & F_PRESENT) > 0
     }
 }
 
@@ -91,10 +93,14 @@ impl PageDir {
 
         // Create linear map
         let table = unsafe { pd_entry.get_table_mut() };
-        table.linear_map(0 as *const (), 0x00100000 as *const ());
+        table.linear_map(0 as *const (), 0x00150000 as *const ());
     }
 
     pub unsafe fn get_entry(&self, index: usize) -> &RawPageDirEntry {
         &self.0[index]
+    }
+
+    pub unsafe fn get_entry_mut(&mut self, index: usize) -> &mut RawPageDirEntry {
+        &mut self.0[index]
     }
 }

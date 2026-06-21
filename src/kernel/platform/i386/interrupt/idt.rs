@@ -19,17 +19,19 @@ static mut IDT: IDTGates = {
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct IDTGate {
-    lo_offset: u16, // Lo bits of handler function
-    sel: u16,       // Kernel segment selector
+    /// Lo bits of handler function
+    lo_offset: u16, 
+    /// Kernel segment selector
+    sel: u16,       
     always_0: u8,
-    /* First byte
-     * Bit 7: "Interrupt is present"
-     * Bits 6-5: Privilege level of caller (0=kernel..3=user)
-     * Bit 4: Set to 0 for interrupt gates
-     * Bits 3-0: bits 1110 = decimal 14 = "32 bit interrupt gate"
-     */
+    /// First byte
+    /// Bit 7: "Interrupt is present"
+    /// Bits 6-5: Privilege level of caller (0=kernel..3=user)
+    /// Bit 4: Set to 0 for interrupt gates
+    /// Bits 3-0: bits 1110 = decimal 14 = "32 bit interrupt gate"
     flags: u8,
-    hi_offset: u16, // Hi bits of handler function
+    /// Hi bits of handler function
+    hi_offset: u16,
 }
 
 impl IDTGate {

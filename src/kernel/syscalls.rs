@@ -72,7 +72,7 @@ impl SysCall {
         unsafe {
             KERNEL
                 .mem
-                .with_unwrap(|mem| mem.unmap(regs.reg.ecx as *mut u8, regs.reg.edx as usize));
+                .with_unwrap(|mem| mem.unmap(regs.reg.ecx as *mut (), regs.reg.edx as usize));
             0
         }
     }
