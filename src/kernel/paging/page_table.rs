@@ -15,7 +15,7 @@ const F_AVAILABLE: u32 = 1 << 6;
 /// PS bit. Set -> Big Page, Unset -> Page Table
 const F_PAGE_SIZE: u32 = 1 << 7;
 
-const M_PAGE_TABLE: u32 = 0b11111111_11111111_11110000_00000000;
+const M_PAGE_BASE: u32 = 0b11111111_11111111_11110000_00000000;
 
 #[derive(Clone, Copy)]
 pub struct RawPageTableEntry(u32);
@@ -25,8 +25,12 @@ impl RawPageTableEntry {
         Self(0x0000)
     }
 
-    pub fn map_to(&mut self, addr: *const u8) {
-        self.0 = (addr as u32) & M_PAGE_TABLE;
+    pub fn base(&self) -> *const () {
+        (self.0 & M_PAGE_BASE) as *const ()
+    }
+
+    pub fn map_to(&mut self, addr: *const ()) {
+        self.0 = (addr as u32) & M_PAGE_BASE;
         self.0 |= F_PRESENT;
     }
 }
@@ -39,11 +43,16 @@ impl PageTable {
         Self([RawPageTableEntry::new_unused(); PAGE_TABLE_ENTRIES])
     }
 
-    pub fn linear_map(&mut self, start: *const u8, end: *const u8) {
+    pub unsafe fn get_entry(&self, index: usize) -> &RawPageTableEntry {
+        &self.0[index]
+    }
+
+    pub fn linear_map(&mut self, start: *const (), end: *const ()) {
         let m = (end as usize - start as usize) / PAGE_FRAME_SIZE;
+        let start = start as *const u8;
         for i in 0..min(m, PAGE_TABLE_ENTRIES) {
-            let x = &mut self.0[0];
-            x.map_to(unsafe { start.add(4096 * i) });
+            let x: &mut RawPageTableEntry = &mut self.0[i];
+            x.map_to(unsafe { start.add(4096 * i) as *const ()});
         }
     }
 }

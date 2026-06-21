@@ -20,7 +20,7 @@ const M_BIG_PAGE_LO: u32 = 0b11111111_11000000_11110000_00000000;
 const M_PAGE_TABLE: u32 = 0b11111111_11111111_11110000_00000000;
 
 #[derive(Copy, Clone)]
-struct RawPageDirEntry(u32);
+pub struct RawPageDirEntry(u32);
 
 impl RawPageDirEntry {
     pub const fn new_unused() -> Self {
@@ -37,7 +37,7 @@ impl RawPageDirEntry {
     pub fn new_page_entry(&mut self, page_addr: *const u8) {
         // Only the upper 20 bits are used. The lower should all be 0 as a page
         // table address is aligned at 4KiB.
-        let addr = page_addr as u32 | M_PAGE_TABLE;
+        let addr = page_addr as u32 & M_PAGE_TABLE;
         self.0 |= F_PRESENT | F_READ_WRITE | F_PAGE_SIZE;
         self.0 &= !(F_AVAILABLE | F_ACCESSED);
         self.0 = (self.0 & !M_PAGE_TABLE) | addr;
@@ -51,7 +51,7 @@ impl RawPageDirEntry {
     pub fn new_table_entry(&mut self, table: &PageTable) {
         // Only the upper 20 bits are used. The lower should all be 0 as a page
         // table address is aligned at 4KiB.
-        let addr = table as *const PageTable as u32 | M_PAGE_TABLE;
+        let addr = table as *const PageTable as u32 & M_PAGE_TABLE;
         self.0 |= F_PRESENT | F_READ_WRITE;
         self.0 &= !(F_PAGE_SIZE | F_AVAILABLE | F_ACCESSED);
         self.0 = (self.0 & !M_PAGE_TABLE) | addr;
@@ -61,7 +61,11 @@ impl RawPageDirEntry {
         self.0 &= !F_PRESENT;
     }
 
-    pub unsafe fn get_table_mut(&self) -> &mut PageTable {
+    pub unsafe fn get_table(&self) -> &PageTable {
+        unsafe { &*((self.0 & M_PAGE_TABLE) as *const PageTable) }
+    }
+
+    pub unsafe fn get_table_mut(&mut self) -> &mut PageTable {
         unsafe { &mut *((self.0 & M_PAGE_TABLE) as *mut PageTable) }
     }
 }
@@ -86,6 +90,10 @@ impl PageDir {
 
         // Create linear map
         let table = unsafe { pd_entry.get_table_mut() };
-        table.linear_map(0 as *const u8, 0x00100000 as *const u8);
+        table.linear_map(0 as *const (), 0x00100000 as *const ());
+    }
+
+    pub unsafe fn get_entry(&self, index: usize) -> &RawPageDirEntry {
+        &self.0[index]
     }
 }
