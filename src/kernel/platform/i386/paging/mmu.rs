@@ -1,6 +1,6 @@
 use core::{arch::asm, hint};
 
-use crate::kernel::paging::{
+use crate::kernel::platform::i386::paging::{
     page_dir::{PAGE_DIR_ENTRIES, PageDir},
     page_table::PAGE_FRAME_SIZE,
 };
@@ -37,6 +37,8 @@ impl MMU {
                 "mov cr0, eax",
                 pd = in(reg) self.pd_ptr,
             );
+            let ptr = 0x200000 as *mut u8;
+            *ptr = 0xBE;
         }
     }
 

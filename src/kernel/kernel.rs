@@ -1,10 +1,8 @@
 use core::arch::asm;
 
 use crate::kernel::{
-    KERNEL, console::Console, global::{Global, GlobalLazy}, keyboard_driver::KeyboardDriver, mem::MemoryManager, paging::mmu::MMU, platform::i386::{
-        gdt::{CompiledGDTEntry, GDTEntry, GDTR},
-        interrupt::idt::setup_idt,
-        tss::TSS,
+    KERNEL, console::Console, global::{Global, GlobalLazy}, keyboard_driver::KeyboardDriver, mem::MemoryManager, platform::i386::{
+        gdt::{CompiledGDTEntry, GDTEntry, GDTR}, interrupt::idt::setup_idt, paging::mmu::MMU, tss::TSS
     }, tty::TTY, vga_driver::VGATextDriver
 };
 

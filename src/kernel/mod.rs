@@ -8,7 +8,6 @@ mod interrupt_handlers;
 pub mod kernel;
 pub mod keyboard_driver; // TODO remove from kernel, make separate module
 pub mod mem;
-pub(in crate::kernel) mod paging;
 pub mod platform;
 mod ports;
 pub mod pre_boot;

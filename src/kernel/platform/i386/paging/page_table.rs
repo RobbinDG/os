@@ -52,7 +52,7 @@ impl PageTable {
         let start = start as *const u8;
         for i in 0..min(m, PAGE_TABLE_ENTRIES) {
             let x: &mut RawPageTableEntry = &mut self.0[i];
-            x.map_to(unsafe { start.add(4096 * i) as *const ()});
+            x.map_to(unsafe { start.add(4096 * i) as *const () });
         }
     }
 }
