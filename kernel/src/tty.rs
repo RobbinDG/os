@@ -1,6 +1,6 @@
 use core::cmp::min;
 
-use crate::kernel::KERNEL;
+use crate::KERNEL;
 
 // Choose power of 2 for modulus efficiency.
 const BUF_SIZE: usize = 64;

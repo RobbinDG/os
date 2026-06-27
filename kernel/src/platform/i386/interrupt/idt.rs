@@ -1,7 +1,6 @@
 use core::arch::asm;
 
-use crate::{
-    kernel::platform::i386::interrupt::{isr::*, pic::PIC},
+use crate::{platform::i386::interrupt::{isr::*, pic::PIC},
     util::{address_hi_16_bytes, address_lo_16_bytes},
 };
 

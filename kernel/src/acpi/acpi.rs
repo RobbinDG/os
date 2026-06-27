@@ -1,4 +1,4 @@
-use crate::kernel::acpi::iter::SDTIterator;
+use crate::acpi::iter::SDTIterator;
 
 const SIGNATURE: [u8; 8] = [b'R', b'S', b'D', b' ', b'P', b'T', b'R', b' '];
 const EBDA_ADDR: *const u8 = 0x80000 as *const u8;

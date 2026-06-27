@@ -1,4 +1,4 @@
-use crate::kernel::{
+use crate::{
     KERNEL,
     vga_driver::{HEIGHT, WIDTH},
 };

@@ -1,4 +1,4 @@
-use crate::kernel::{
+use crate::{
     platform::i386::paging::{constants::PAGE_FRAME_SIZE, mmu::MMU, page_table::PageTable},
     pre_boot::{MemSpec, read_mem_spec},
 };

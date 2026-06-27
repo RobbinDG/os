@@ -1,7 +1,6 @@
 use core::ptr;
 
-use crate::{
-    kernel::ports::{read_port_byte, write_port_byte},
+use crate::{ports::{read_port_byte, write_port_byte},
     vga::{Port, VGA},
 };
 

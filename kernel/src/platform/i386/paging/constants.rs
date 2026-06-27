@@ -1,4 +1,4 @@
-use crate::kernel::platform::i386::paging::page_table::PageTable;
+use crate::platform::i386::paging::page_table::PageTable;
 
 pub const PAGE_DIR_ENTRIES: usize = 1024;
 pub const BIG_PAGE_SIZE: usize = PAGE_FRAME_SIZE * PAGE_DIR_ENTRIES;

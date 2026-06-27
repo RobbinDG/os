@@ -1,4 +1,4 @@
-use crate::kernel::acpi::acpi::{ACPI, ACPISDTHeader};
+use crate::acpi::acpi::{ACPI, ACPISDTHeader};
 
 
 pub struct SDTIterator<'a> {

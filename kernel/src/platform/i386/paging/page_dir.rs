@@ -1,4 +1,4 @@
-use crate::kernel::platform::i386::paging::{constants::PAGE_DIR_ENTRIES, page_table::PageTable};
+use crate::platform::i386::paging::{constants::PAGE_DIR_ENTRIES, page_table::PageTable};
 
 const F_PRESENT: u32 = 1 << 0;
 const F_READ_WRITE: u32 = 1 << 1;

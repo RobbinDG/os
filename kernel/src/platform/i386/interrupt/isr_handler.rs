@@ -1,6 +1,6 @@
 use core::{arch::asm, hint::black_box};
 
-use crate::kernel::platform::i386::{
+use crate::platform::i386::{
     interrupt::data::InterruptHandlerData, syscall_handler::syscall,
 };
 

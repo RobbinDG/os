@@ -1,6 +1,6 @@
 use core::ptr;
 
-use crate::kernel::{KERNEL, platform::i386::context_switch::{ProcessCtrlBlock, switch_to_user_mode}};
+use crate::{KERNEL, platform::i386::context_switch::{ProcessCtrlBlock, switch_to_user_mode}};
 
 pub struct Scheduler {
     root: ProcessCtrlBlock,

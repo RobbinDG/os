@@ -1,4 +1,4 @@
-use crate::kernel::platform::i386::context_switch::{ProcessCtrlBlock, switch_context};
+use crate::platform::i386::context_switch::{ProcessCtrlBlock, switch_context};
 
 pub struct ProcessManager {
     processes: Option<ProcessCtrlBlock>,

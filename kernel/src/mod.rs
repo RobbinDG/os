@@ -1,4 +1,4 @@
-use crate::kernel::kernel::Kernel;
+use crate::kernel::Kernel;
 
 pub mod acpi;
 mod console;

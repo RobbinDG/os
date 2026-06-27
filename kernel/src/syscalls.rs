@@ -1,6 +1,6 @@
 use core::slice;
 
-use crate::kernel::{KERNEL, platform::i386::interrupt::data::InterruptHandlerData};
+use crate::{KERNEL, platform::i386::interrupt::data::InterruptHandlerData};
 
 pub enum SysCall {
     Unknown = 0,

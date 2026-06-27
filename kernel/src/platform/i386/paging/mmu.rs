@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::kernel::platform::i386::paging::{
+use crate::platform::i386::paging::{
     constants::{PAGE_DIR_ENTRIES, PAGE_FRAME_SIZE, PAGE_TABLE_ENTRIES},
     page_dir::PageDir,
     page_table::PageTable,

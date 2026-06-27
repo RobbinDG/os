@@ -1,4 +1,4 @@
-use crate::kernel::{
+use crate::{
     KERNEL,
     ps2::{KeyboardError, identify_devices, init_ps2, read_keyboard_response},
     tty::TTY,

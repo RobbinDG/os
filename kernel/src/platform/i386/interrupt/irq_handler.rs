@@ -1,5 +1,4 @@
-use crate::{
-    kernel::{
+use crate::{{
         KERNEL,
         event_buf::{EVENT_BUF, EVENT_BUF_SIZE},
         interrupt_handlers::INTERRUPT_HANDLERS,

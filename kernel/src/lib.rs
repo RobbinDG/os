@@ -16,23 +16,44 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-mod decimal_printable;
-mod dyn_array;
-mod hex_printable;
+// mod decimal_printable;
+// mod dyn_array;
+// mod hex_printable;
+// mod kernel;
+// mod programs;
+// mod shell;
+// mod static_str;
+// mod sys_event;
+// mod util;
+// mod vga;
+mod acpi;
+mod console;
+mod event_buf;
+mod global;
+mod interrupt_handlers;
 mod kernel;
-mod programs;
-mod shell;
-mod static_str;
+mod keyboard_driver; // TODO remove from kernel, make separate module
+mod mem;
+mod platform;
+mod ports;
+mod pre_boot;
+mod process_manager;
+mod ps2;
+mod scheduler;
 mod sys_event;
+mod syscalls;
+mod tty;
 mod util;
 mod vga;
+mod vga_driver;
+
+pub(self) static KERNEL: Kernel = Kernel::new();
 
 use crate::{
-    kernel::{
-        global::Global, kernel::init_kernel, platform::i386::context_switch::ProcessCtrlBlock,
-        scheduler::Scheduler,
-    },
-    programs::{lib::syscall_write, run_shell::run_shell},
+    global::Global,
+    kernel::{Kernel, init_kernel},
+    platform::i386::context_switch::ProcessCtrlBlock,
+    scheduler::Scheduler,
 };
 
 static SCHEDULER: Global<Scheduler> = unsafe { Global::new(Scheduler::new()) };
@@ -100,11 +121,6 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     }
 }
     */
-#[inline(never)]
-fn sample_process() {
-    let buf = [b'A'];
-    syscall_write(&buf, buf.len());
-}
 
 #[unsafe(no_mangle)] // turns off name mangling so we can easily link to it later.
 pub extern "C" fn kernel_main() -> ! {

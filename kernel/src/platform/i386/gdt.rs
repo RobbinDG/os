@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::kernel::platform::i386::tss::TSS;
+use crate::platform::i386::tss::TSS;
 
 #[repr(C, packed)]
 #[derive(Default)]

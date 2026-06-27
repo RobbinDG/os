@@ -1,4 +1,4 @@
-use crate::kernel::{platform::i386::interrupt::data::InterruptHandlerData, syscalls::SysCall};
+use crate::{platform::i386::interrupt::data::InterruptHandlerData, syscalls::SysCall};
 
 #[inline(never)]
 pub unsafe fn syscall(data: &mut InterruptHandlerData) -> usize {

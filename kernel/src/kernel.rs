@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::kernel::{
+use crate::{
     KERNEL,
     console::Console,
     global::{Global, GlobalLazy},

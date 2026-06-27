@@ -1,6 +1,6 @@
 use core::cmp::min;
 
-use crate::kernel::platform::i386::paging::constants::{PAGE_FRAME_SIZE, PAGE_TABLE_ENTRIES};
+use crate::platform::i386::paging::constants::{PAGE_FRAME_SIZE, PAGE_TABLE_ENTRIES};
 
 const F_PRESENT: u32 = 1 << 0;
 const F_READ_WRITE: u32 = 1 << 1;

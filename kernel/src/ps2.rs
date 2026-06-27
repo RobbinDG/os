@@ -1,5 +1,5 @@
 use crate::{
-    kernel::ports::{Port, read_port_byte, write_port_byte},
+    ports::{Port, read_port_byte, write_port_byte},
     util::read_bit_mask,
 };
 
@@ -141,10 +141,12 @@ fn send_device_command(dev_cmd_byte: u8) -> Option<bool> {
     ps2_read_response_data_or_timeout().map(|resp| resp == PS2_DEV_CMD_ACK)
 }
 
-fn send_and_check_device_command(dev_cmd_byte: u8, err: KeyboardError) -> Result<(), KeyboardError> {
-    let success =
-        send_device_command(dev_cmd_byte).ok_or(KeyboardError::DeviceTimeout)?;
-    if !success{
+fn send_and_check_device_command(
+    dev_cmd_byte: u8,
+    err: KeyboardError,
+) -> Result<(), KeyboardError> {
+    let success = send_device_command(dev_cmd_byte).ok_or(KeyboardError::DeviceTimeout)?;
+    if !success {
         return Err(err);
     }
     Ok(())
