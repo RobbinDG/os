@@ -46,6 +46,7 @@ clean:
 
 debug: $(BUILD_DIR)/os-image.bin $(BUILD_DIR)/kernel.elf
 	$(QEMU) -no-reboot -s -fda $(BUILD_DIR)/os-image.bin &
+# $(QEMU) -no-reboot -s -fda $(BUILD_DIR)/os-image.bin -d int  &
 	$(GDB) -ex "target remote localhost:1234"
 
 run: $(BUILD_DIR)/os-image.bin 
