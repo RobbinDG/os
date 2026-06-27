@@ -21,13 +21,6 @@ pub fn init_kernel() -> Result<(), ()> {
     unsafe { KERNEL.init() }
 }
 
-pub enum KernelError {
-    NotReady,
-    OutOfBounds,
-    Busy,
-    OutOfMemory,
-}
-
 pub struct Kernel<'a> {
     //--- GLOBAL STATE ---
     /// The GDT needs a static memory location native to the kernel, so

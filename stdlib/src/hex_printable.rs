@@ -1,4 +1,5 @@
-use crate::{kernel::kernel::KernelError, programs::lib::Vec};
+use crate::{KernelError, Vec};
+
 
 pub trait HexPrintable {
     type Item;

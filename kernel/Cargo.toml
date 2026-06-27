@@ -11,6 +11,7 @@ test = false
 bench = false
 
 [dependencies]
+common = { path = "../common" }
 # spin = { version = "0.10.0" }
 # once_cell_no_std = { version = "0.1.1" }
 

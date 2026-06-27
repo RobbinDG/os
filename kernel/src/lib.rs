@@ -61,12 +61,13 @@ static SCHEDULER: Global<Scheduler> = unsafe { Global::new(Scheduler::new()) };
 #[inline(never)]
 pub unsafe extern "C" fn scheduler_entrypoint() -> ! {
     loop {
-        let mut process = ProcessCtrlBlock::new_process(0x7FFFF, run_shell);
-        unsafe {
-            SCHEDULER.with::<()>(|s| {
-                s.run_process(&mut process);
-            })
-        };
+
+        // let mut process = ProcessCtrlBlock::new_process(0x7FFFF, run_shell);
+        // unsafe {
+        //     SCHEDULER.with::<()>(|s| {
+        //         s.run_process(&mut process);
+        //     })
+        // };
     }
 }
 

@@ -1,12 +1,14 @@
-use crate::{
-    programs::{
-        lib::{print_ascii, print_decimal, print_hex, println_ascii},
-        ps2_cli::ps2_cli,
-    },
-    static_str::StaticString,
-};
+use core::assert;
 
 const BUF_SIZE: usize = 32;
+
+use stdlib::print_ascii;
+use stdlib::print_decimal;
+use stdlib::print_hex;
+use stdlib::println_ascii;
+use stdlib::static_str::StaticString;
+
+use crate::ps2_cli::ps2_cli;
 
 enum Command {
     Empty,
@@ -83,7 +85,7 @@ impl Shell {
                             Command::Empty => {}
                             Command::PS2 => ps2_cli(),
                             Command::Commands => self.print_cmd_options(),
-                            Command::Mem => self.print_mem(),
+                            Command::Mem => {} //self.print_mem(),
                         }
                     }
                     return;
@@ -111,6 +113,7 @@ impl Shell {
         }
     }
 
+    /*
     unsafe fn print_mem(&mut self) {
         unsafe {
             KERNEL.mem.with_unwrap(|mem_mgr| {
@@ -134,4 +137,5 @@ impl Shell {
             });
         }
     }
+    */
 }

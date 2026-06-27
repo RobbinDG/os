@@ -1,14 +1,29 @@
+#![no_std]
+
 use core::{
     arch::naked_asm,
+    marker::Sized,
     ops::{Index, IndexMut},
     ptr, slice,
 };
 
+use common::SysCall;
+
 use crate::{
     decimal_printable::{DecimalDigits, DecimalPrintable},
     hex_printable::HexPrintable,
-    kernel::{kernel::KernelError, syscalls::SysCall},
 };
+
+pub mod decimal_printable;
+pub mod hex_printable;
+pub mod static_str;
+
+pub enum KernelError {
+    NotReady,
+    OutOfBounds,
+    Busy,
+    OutOfMemory,
+}
 
 #[inline(never)]
 pub fn syscall_write<T: Sized>(/* fd: usize, */ buf: &[T], count: usize) -> usize {

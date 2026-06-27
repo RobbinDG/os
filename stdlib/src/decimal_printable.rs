@@ -1,6 +1,6 @@
 use core::ops::{Div, Rem};
 
-use crate::{kernel::kernel::KernelError, programs::lib::Vec};
+use crate::{KernelError, Vec};
 
 pub trait DecimalDigits {
     fn decimal_digits() -> usize;
@@ -73,42 +73,3 @@ impl DecimalDigits for u64 {
         self as u8
     }
 }
-
-/*
-impl DecimalPrintable for u8 {
-    type Item = u8;
-
-    unsafe fn convert_to_bytes(&self, buf: &mut DynArray<u8>) -> Result<(), KernelError> {
-        unsafe {
-            buf.set(0, *self)?;
-            Ok(())
-        }
-    }
-}
-
-impl DecimalPrintable for u16 {
-    type Item = u16;
-
-    unsafe fn convert_to_bytes(&self, buf: &mut DynArray<u8>) -> Result<(), KernelError> {
-        unsafe {
-            buf.set(1, (self & 0x00FF) as u8)?;
-            buf.set(0, (self >> 8) as u8)?;
-            Ok(())
-        }
-    }
-}
-
-impl DecimalPrintable for u32 {
-    type Item = u32;
-
-    unsafe fn convert_to_bytes(&self, buf: &mut DynArray<u8>) -> Result<(), KernelError> {
-        unsafe {
-            buf.set(3, ((self >> 0) & 0xFF) as u8)?;
-            buf.set(2, ((self >> 8) & 0xFF) as u8)?;
-            buf.set(1, ((self >> 16) & 0xFF) as u8)?;
-            buf.set(0, (self >> 24) as u8)?;
-            Ok(())
-        }
-    }
-}
-*/
