@@ -3,6 +3,14 @@
 version = 4
 
 [[package]]
+name = "kernel"
+version = "0.1.0"
+dependencies = [
+ "once_cell_no_std",
+ "spin",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -16,14 +24,6 @@ name = "once_cell_no_std"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa32e177c2b2d33c279f41b74828c00edf20a00fefca2cb73afe61c95f1a0c68"
-
-[[package]]
-name = "os"
-version = "0.1.0"
-dependencies = [
- "once_cell_no_std",
- "spin",
-]
 
 [[package]]
 name = "scopeguard"

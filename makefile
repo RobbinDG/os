@@ -15,6 +15,7 @@ LESS_ARGS=-R
 .FORCE: ;
 
 $(TARGET): .FORCE
+	cd kernel
 	cargo build --release -Zjson-target-spec
 
 test: .FORCE 
