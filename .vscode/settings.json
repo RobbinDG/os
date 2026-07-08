@@ -1,0 +1,11 @@
+{
+    "makefile.configureOnOpen": false,
+    "rust-analyzer.cargo.targetDir": true,
+    "rust-analyzer.cargo.extraArgs": ["-Zunstable-options","-Zjson-target-spec"],
+    "rust-analyzer.rustup.channel": "nightly",
+    "files.associations": {
+        ".gdbinit": "ignore"
+    },
+    "rust-analyzer.cargo.target": "i386-target.json",
+    "rust-analyzer.cargo.allTargets": false
+}
