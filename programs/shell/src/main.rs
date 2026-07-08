@@ -1,14 +1,15 @@
 #![no_std]
+#![no_main]
 
 use crate::shell::Shell;
 use stdlib::syscall_read;
 
-mod shell;
 mod ps2_cli;
+mod shell;
 
 /// The main function to-be for the shell program.
-#[inline(never)]
-pub fn main() {
+#[unsafe(no_mangle)]
+pub fn _start() {
     let mut shell = unsafe { Shell::new() };
 
     let mut buf = [0u8; 16];

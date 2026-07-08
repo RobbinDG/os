@@ -4,6 +4,7 @@ use core::{
     arch::naked_asm,
     marker::Sized,
     ops::{Index, IndexMut},
+    panic::PanicInfo,
     ptr, slice,
 };
 
@@ -23,6 +24,11 @@ pub enum KernelError {
     OutOfBounds,
     Busy,
     OutOfMemory,
+}
+
+#[panic_handler]
+pub fn kernel_panic(_: &PanicInfo) -> ! {
+    loop {}
 }
 
 #[inline(never)]
